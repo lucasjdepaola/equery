@@ -1,0 +1,182 @@
+// below are the listed functions that equery supports
+// max(.num) min(.num), utc(.date) average(.num) sum(.num) lowercase(.string) uppercase(.string)
+// count(.any) orderby(.any, desc|asc)
+// these are supposed to be majorly the native static functions, not the live implementation of the language itself.
+
+import { errors, QueryError } from "./errors";
+import { JsonData } from "./jsoncraft";
+
+export const containsError = (data: JsonData | QueryError): boolean => {
+    return "error" in data;
+}
+
+export const max = (values: number[]): number => {
+    return Math.max(...values);
+}
+
+export const min = (values: number[]): number => {
+    return Math.min(...values)
+}
+
+export const average = (values: number[]): number => {
+    return sum(values) / values.length;
+}
+
+export const sum = (values: number[]): number => {
+    return values.reduce((prev: number, current: number) => prev + current);
+}
+
+
+// basic functions
+
+export const lowercase = (value: string): string => {
+    return value.toLowerCase();
+}
+
+export const uppercase = (value: string): string => {
+    return value.toUpperCase();
+}
+
+export const toUTC = () => {
+
+}
+
+// orderby
+
+export const findSubProperty = (data: JsonData, subProperty: string): JsonData|void => {
+    // return {
+    //     name: "foo",
+    //     value: [null, "null"]
+    // };
+}
+
+export const orderby = (db: JsonData[], property: string, ascending: boolean): JsonData[] | QueryError => { // it needs to find the property, we need more data
+    const orderedData: JsonData[] = [];
+    for(const insertion of db) {
+        const propertyData = findSubProperty(insertion, property);
+        // const [value, type] = propertyData.value;
+        // we need this to be an array of jsondata that complies with a schematic, not good in its' current form
+        // if(type === "string") {
+        //     // order by alphabetical (can't do anything else)
+        // }
+        // else if(type === "number") {
+        //     // order by numerical value
+        // } else {
+        //     return errors[0]; // first error
+        // }
+    }
+    return orderedData;
+}
+
+export const limit = (data: JsonData[], limit: number): JsonData[] => {
+    return data.slice(0, limit);
+}
+
+// we need a method to find the object property based on a string such as self.sub.age like this
+
+
+// filter by key names like this
+// .name, .age
+export const constructObject = (db: JsonData[], keys: string[]) => {
+    // should look like this: [".age", ".child.name"]
+
+}
+
+// string functions
+export const contains = (expression: string, value: string) => {
+    const regex: RegExp = new RegExp(expression);
+    return regex.test(value);
+}
+
+// we could find a way to leverage the functions native to javascript
+
+
+
+// more to add below
+// yearsfromdate(.number), senator is yearsfromdate(.birthdate) years old
+// .name: yearstoday(.birthday)
+// ft(.sizeinmm)
+// if it's not in mm then do mmfromft(.size) then convert back
+// file name is .eq
+
+
+// conversions
+
+export const ft = (mm: number) => {
+    return mm * 100; // change to the proper conversion
+}
+
+// date lib
+// we go from the utc number, then we compare it to today's date and calculate the proper years.
+export const yearsfromdate = (utc: number): number => {
+    const today: number = Date.now();
+    const timeDifference: number= new Date(today - utc).getFullYear();
+    return timeDifference; // we could change it to a regular date, however, a number seems more fitting.
+}
+// we also need proper conversions from date formats (say mm-dd-yyyy or yyyy-mm-dd)
+
+
+enum DateTypes {
+    mmddyyyy, ddmmyyyy, yyyy
+}
+type Month = number;
+type Day = number;
+type Year = number;
+interface QuasiDate {
+    month: Month; // have a correct date check to ensure that the date is correct
+    day: Day;
+    year: Year;
+}
+
+const formatDate = (mdy: string) => { // we expect "mm-dd-yyyy or mmddyyyy or mdy (whatever works)"
+    const array = mdy.split(""); // remove duplicates, then break into character formats
+}
+
+const isDateCorrect = (date: QuasiDate): boolean => {
+    return date.day < 33 && date.month < 13 && date.year < 10000;
+}
+
+// below are some statements that are equery compatible, to understand better some of the functions that involve date
+// orderby(years(.date))
+// valid statement: .date = years(today())
+// twitter allows for the best date queries, so it would be better to think in
+// twitter advanced terms
+// note: we only really need to use years() for simple functions, we don't always need it.
+// like this: years(.date) = years(today())
+
+export const years = (utc: number) => {
+    // return the number of years from a utc date which is a native integer
+    return new Date(utc).getFullYear(); // this should return something like 2024/2023, etc
+}
+
+export const today = (): number => {
+    return Date.now(); // return the date in utc
+}
+export const ytoday = (): number => {
+    return new Date().getFullYear(); // get todays date in years
+}
+
+export const parseDate = (date: string, fmt?: string): Date => {
+    // we can accept a formatting which would include mdy dmy, etc.
+    // without this, we would assume that the date would be mm-dd-yyyy
+    // valid formats of a user inputted date
+    // "02-26-2004"
+    // "02/26/2004"
+    // "02 26 2004"
+    // "2004 02 26"
+    // build regular expressions with the correct date
+    if(date.includes("/")) {
+        // slash case
+        const numbers = date.split("/");
+    }
+    else if(date.includes("-")) {
+        // dash case
+    }
+    else if(date.includes(" ")) {
+        // space case
+    }
+    return new Date();
+}
+
+const date = parseDate("07-24-2003");
+console.log(date.getFullYear());

@@ -1,0 +1,44 @@
+for the interface 
+interface Person {
+    name: string;
+    age: number;
+    height: number;
+    married: boolean;
+    spouse?: Person;
+} // not actually real, the json should exist following this schema theoretically
+
+.name: .name = "lucas" & .age > 20
+
+length(.name) > 5 | .height > ft(10)
+
+.married & .spouse.age > 20 ~ orderby(.age) desc
+
+.name: orderby(.age)
+
+.name: .age = max(.age)
+
+.name: .age > average(.age)
+
+
+interface Tweet {
+    username: string;
+    content: string;
+    likes: number;
+    date: number; // utc
+    replies: Tweet[]
+}
+
+.username = "lucas" ~ orderby(.date) desc
+// list of tweets by username lucas
+
+orderby(.likes) desc
+// find the most liked tweets
+
+.content: has(.content, "happy") ~ orderby(.likes) desc limit(10)
+// find tweets in descending order which has "happy" in it
+
+length(.username) < 5
+// find tweets of a user with a username less than 5 characters
+
+orderby(.date) asc
+// find the oldest tweets in order
