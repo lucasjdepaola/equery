@@ -26,6 +26,14 @@ export const sum = (values: number[]): number => {
     return values.reduce((prev: number, current: number) => prev + current);
 }
 
+export const count = (values: any[]): number => {
+    return values.length;
+}
+
+export const aggregateFunctions = {
+    max, min, average, sum, count
+}
+
 
 // basic functions
 
@@ -37,60 +45,18 @@ export const uppercase = (value: string): string => {
     return value.toUpperCase();
 }
 
-export const toUTC = () => {
-
-}
-
-// orderby
-
-export const findSubProperty = (data: JsonData, subProperty: string): JsonData|void => {
-    // return {
-    //     name: "foo",
-    //     value: [null, "null"]
-    // };
-}
-
-export const orderby = (db: JsonData[], property: string, ascending: boolean): JsonData[] | QueryError => { // it needs to find the property, we need more data
-    const orderedData: JsonData[] = [];
-    for(const insertion of db) {
-        const propertyData = findSubProperty(insertion, property);
-        // const [value, type] = propertyData.value;
-        // we need this to be an array of jsondata that complies with a schematic, not good in its' current form
-        // if(type === "string") {
-        //     // order by alphabetical (can't do anything else)
-        // }
-        // else if(type === "number") {
-        //     // order by numerical value
-        // } else {
-        //     return errors[0]; // first error
-        // }
-    }
-    return orderedData;
-}
-
-export const limit = (data: JsonData[], limit: number): JsonData[] => {
-    return data.slice(0, limit);
+export const toUTC = (date: string): number => {
+    return 1;
 }
 
 // we need a method to find the object property based on a string such as self.sub.age like this
-
-
-// filter by key names like this
-// .name, .age
-export const constructObject = (db: JsonData[], keys: string[]) => {
-    // should look like this: [".age", ".child.name"]
-
-}
 
 // string functions
 export const contains = (expression: string, value: string) => {
     const regex: RegExp = new RegExp(expression);
     return regex.test(value);
 }
-
 // we could find a way to leverage the functions native to javascript
-
-
 
 // more to add below
 // yearsfromdate(.number), senator is yearsfromdate(.birthdate) years old
@@ -115,26 +81,7 @@ export const yearsfromdate = (utc: number): number => {
 }
 // we also need proper conversions from date formats (say mm-dd-yyyy or yyyy-mm-dd)
 
-
-enum DateTypes {
-    mmddyyyy, ddmmyyyy, yyyy
-}
-type Month = number;
-type Day = number;
-type Year = number;
-interface QuasiDate {
-    month: Month; // have a correct date check to ensure that the date is correct
-    day: Day;
-    year: Year;
-}
-
-const formatDate = (mdy: string) => { // we expect "mm-dd-yyyy or mmddyyyy or mdy (whatever works)"
-    const array = mdy.split(""); // remove duplicates, then break into character formats
-}
-
-const isDateCorrect = (date: QuasiDate): boolean => {
-    return date.day < 33 && date.month < 13 && date.year < 10000;
-}
+// TODO, move this to a date file
 
 // below are some statements that are equery compatible, to understand better some of the functions that involve date
 // orderby(years(.date))

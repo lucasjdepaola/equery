@@ -45,9 +45,9 @@ export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode
 }
 
 const findPropertyValue = (propertyPath: PropertyNode, data: JsonData): JsonValue|QueryError => {
-    let value: JsonValue = data.value;
+    let value: JsonValue = data.property;
     for(const propertyName of propertyPath.path) {
-        if(data.value.type === "object" && data.value.value) {
+        if(data.property.type === "object" && data.property.value) {
             if(value.value) {
                 value = value.value[propertyName];
             } else {
@@ -64,11 +64,11 @@ const findPropertyValue = (propertyPath: PropertyNode, data: JsonData): JsonValu
 const findProperty = (path: PropertyNode, data: JsonData): JsonData | QueryError => {
     let value: JsonData = data;
     for(const propertyName of path.path) {
-        if(data.value.type === "object" && data.value.value) {
-            if(value.value) {
+        if(data.property.type === "object" && data.property.value) {
+            if(value.property) {
                 value = {
-                    name: data.value.name,
-                    value: data.value.value[propertyName]
+                    name: data.property.name,
+                    property: data.property.value[propertyName]
                 }
             } else {
                 return errors[1];
@@ -111,7 +111,7 @@ export const interpretExpression = (expression: ExpressionNode, data: JsonData):
         // complicated, because we need to leave it nonaggregated before traversing
         const property: JsonValue | QueryError = findPropertyValue(expression, data);
         if("error" in property) {
-        } else if(property.type !== "null" && property.type !== "object" && property.type !== "array") {
+        } else if(property.type !== "object" && property.type !== "array") {
             return {
                 type: "Literal",
                 value: property.value
@@ -208,7 +208,7 @@ export const interpret = (ast: QueryNode, data: JsonData[]): JsonData | QueryErr
                         // values[e.path[0]] = property;
                         values.value.push({
                             name: property.name,
-                            value: property.value,
+                            property: property.property,
                         })
                         // not fully proper scope, only shallow
                     }
@@ -225,7 +225,7 @@ export const interpret = (ast: QueryNode, data: JsonData[]): JsonData | QueryErr
             });
             return {
                 name: "foo",
-                value: values
+                property: values
             }
         })
         // recursive filter properties that only include certain names involved in the scope relative to their level

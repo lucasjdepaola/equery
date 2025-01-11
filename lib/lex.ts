@@ -23,6 +23,15 @@ export enum TokenType {
     equal, // =
     objectReference, // for type creation, {otherobject}
     unknown, // throw error
+    lparen, // (
+    rparen, // )
+    lbrace, // {
+    rbrace, // }
+    lbracket, // [
+    rbracket, // ]
+    question, // ?
+    semicolon, // ;
+    newline, // \n
 }
 // .prop, .another.one: .prop = 5 & 
 
@@ -44,9 +53,14 @@ export const symbols: {[key: string]: TokenType} = {// we map key -> token if it
     "=": TokenType.equal,
     "^": TokenType.power,
     "#": TokenType.tag,
+    "{": TokenType.lbrace,
+    "}": TokenType.rbrace,
+    "[": TokenType.lbracket,
+    "]": TokenType.rbracket,
+    "?": TokenType.question,
 }
 
-export const operators = {
+export const operators = { // should we add paren to this?
     "&": TokenType.and,
     "|": TokenType.or,
     "<": TokenType.lessthan,
@@ -116,8 +130,7 @@ export const lex = (code: string): Token[] => {
         index++;
         let stringValue = "";
         while(code[index] !== '"' && index < code.length) {
-            stringValue += code[index];
-            index++;
+            stringValue += code[index++];
         }
         tokens.push({
             type: TokenType.string,
@@ -125,11 +138,28 @@ export const lex = (code: string): Token[] => {
         })
         return index + 1;
     }
+    const handleParen = (index: number, name: string): number => {
+        index++;
+        name += "(";
+        let count = 1; // we expect there to be one closure, increment if another appears
+        while((code[index] !== ")" && count > 0) && index < code.length) {
+            if(code[index] === "(") count++;
+            name += code[index++];
+            // encapsulate all arguments inside the function (which are an array of expressions, which can also include a function)
+        }
+        tokens.push({
+            // push a function token if we come from a function
+            type: TokenType.function,
+            value: name + ")"
+        })
+        return index + 1;
+    }
     // main lexical iteration
     for(let i = 0; i < code.length; i++) {
         let char = code[i];
         if(char === " " || char === "\n") {
-            handleWord();
+            handleWord(); // we never get the final index returned?
+            if(char === "\n") tokens.push({type: TokenType.newline, value: "\n"});
         }
         else if(char in symbols) { // !&+-* etc
             handleWord();
@@ -138,10 +168,20 @@ export const lex = (code: string): Token[] => {
         else if(char === '"') {
             let index = handleQuotes(i);
             i = index;
+        } // below
+        else if(char === "(") {
+            // we simply want to encapsulate everything inside the quotes, then we relex later in the parsing stage.
+            // do this with handleparen() then you're done
+            if(word.value.length > 0) { // if we're already parsing a word (indicating function)
+                let index = handleParen(i, word.value);
+                i = index;
+            }
+            // otherwise, we should push lparen indicating an expression
         }
         else { // we map out other cases (should make a regex for all possible word values)
             word.value += char;
         }
     }
+    handleWord(); // incase we have any word left
     return tokens;
 }

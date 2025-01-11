@@ -1,9 +1,6 @@
+import { log } from "./global/console";
 import { lex, operators, Token, TokenType } from "./lex";
 
-// we have three different stages:
-// object selection (.prop1, .prop2: )
-// conditioning, .prop1 > 2 & .prop2 > max(.prop1)
-// ordering, ~ orderby(.age) or orderby(length(.name))
 type NodeType = "Query" | "Property" | "Function" | "BinaryOp" | "Literal" | "OrderBy" | "Program"
 
 interface BaseNode {
@@ -50,18 +47,20 @@ export interface QueryNode extends BaseNode {
 
 export type ExpressionNode = PropertyNode | FunctionNode | LiteralNode | BinaryOpNode;
 
-// static parse utility functions
 const parseFunction = (token: Token): FunctionNode => {
     // we assume the token is a function already checked
     // name(expression, expression, ..., expression)
     const fn: string = token.value;
     const name = fn.slice(0, fn.indexOf("(")); // from the name to the start of the function
-    const contents = fn.slice(fn.indexOf("("), fn.lastIndexOf(")")); // get contents of inner parens
-    const args = contents.split(",")!; // split by comma values, unless we use recursion, which we may need
+    const contents = fn.slice(fn.indexOf("(")+1, fn.lastIndexOf(")")); // get contents of inner parens
+    let args = contents.split(","); // split by comma values, unless we use recursion, which we may need
+    if(contents.length > 0 && !contents.includes(",")) {
+        args = [contents];
+    }
     return {
         type: "Function",
         name: name, // fix below
-        arguments: args.map((arg) => parseExpression(arg)!)
+        arguments: args.map((arg) => parseExpression(lex(arg))[0]!)
     }
 }
 const parseProperty = (token: Token): PropertyNode => {
@@ -72,17 +71,7 @@ const parseProperty = (token: Token): PropertyNode => {
     }
 }
 
-const expression = () => {
-
-}
-const term = () => {
-
-}
-const factor = () => {
-
-}
-
-const operatorPrecedence = {
+const operatorPrecedence: {[key: string]: {precedence: number, associativity: string}} = {
     '+': { precedence: 1, associativity: 'left' },
     '-': { precedence: 1, associativity: 'left' },
     '*': { precedence: 2, associativity: 'left' },
@@ -96,11 +85,9 @@ const operatorPrecedence = {
 
 type Operator = "+" | "-" | "*" | "/" | "&" | "|" | ">" | "<" | "=";
 
-
-const parseExpression = (arg: string): ExpressionNode | void => {
-    let i: number = 0;
-    const parseValue = (): ExpressionNode => {
-        const token = tokens[i++];
+const parseExpression = (tokens: Token[], minPrecedence?: number): [ExpressionNode | undefined, Token[]] => { // return the tokens back that are mutated
+    const minPresedenceLocal: number = minPrecedence || 0;
+    const parseValue = (token: Token): ExpressionNode | undefined => {
         if (!token) throw new Error("Unexpected end of input");
         if(isLiteral(token)) {
             return parseLiteral(token);
@@ -111,31 +98,42 @@ const parseExpression = (arg: string): ExpressionNode | void => {
         else if(token.type === TokenType.property) {
             return parseProperty(token);
         }
-        throw new Error(`Unexpected token: ${token.value}`);
+        else if(token.type === TokenType.lparen) {
+            const [expression, tkns] = parseExpression(tokens.slice(1));
+            tokens = tkns;
+            const nextToken = tokens.shift(); // remove rparen
+            if(!nextToken || nextToken.type !== TokenType.rparen) {
+                throw new Error("Expected closing parenthesis");
+            }
+            return expression;
+        }
+        return undefined;
     };
-    // property, or function, or literal, or binary op
-    // we need to re-lex this data, or fix how we lexed in the first place
-    const tokens = lex(arg) // get the data re-lexed
-    const expressions: ExpressionNode[] = [];
-    let left: ExpressionNode = parseValue();
-    while(i < tokens.length) {
-        let token = tokens[i];
-        if(!isOperator(token)) break;
-        i++;
-        const right = parseValue();
+
+    let token: Token = tokens[0];
+    let left: ExpressionNode | undefined = token? parseValue(token) : undefined;
+    if(!left) return [undefined, tokens];
+    tokens.shift();
+    while(tokens.length !== 0) {
+        token = tokens[0];
+        if(!isOperator(token) || token.type === TokenType.newline) break;
+        const precedence = operatorPrecedence[token.value].precedence;
+        log("precedence is " + precedence + " with operator " + token.value);
+        // if(!precedence) throw new Error("Precedence error");
+        if(precedence < minPresedenceLocal) break;
+
+        const operator = tokens.shift() as Token & {value: Operator};
+        const [right, remainingTokens] = parseExpression(tokens, precedence+1);
+        if(!right) break;
         left = {
             type: "BinaryOp",
-            operator: token.value,
+            operator: operator.value,
             left,
             right
         }
-        // this is native and left, we need a recursive descent solution
-        // 1 + 1 = 2 & .age = 1 | .one > max(.one)
-        // ((1 + 1) = 2) & (.age = 1) | (.one > max(.one))
+        tokens = remainingTokens;
     }
-    return left;
-    // now that you've accumulated expressions, try to shorten them down now.
-    // 1 + 1 = 2 & .age = 1 | .one > max(.one)
+    return [left, tokens];
 }
 const parseLiteral = (token: Token): LiteralNode => {
     if(token.type === TokenType.number) {
@@ -172,12 +170,12 @@ const isOperator = (token: Token): boolean => {
     return token.value in operators;
 }
 
-
 export const parse = (tokens: Token[]): QueryNode | void => {
     // there are three stages we check for, first: property creation, then, condition checking, then ordering
     // scope -> conditioning -> ordering
-    // .name, .age: .age < 10 ~ orderby(.age) desc
+    log('initial tokens: ' + tokens.length);
     const matchAndRemove = (expected: TokenType): Token | undefined => {
+        if(tokens.length === 0) return undefined;
         return tokens[0].type === expected ? tokens.shift() : undefined;
     }
 
@@ -187,15 +185,17 @@ export const parse = (tokens: Token[]): QueryNode | void => {
 
     const scopePhase = (): ExpressionNode[] | void => {
         // we want either no statements or a list of tokentype.property comma tokentype.property ...
+        if(tokens[1].type !== TokenType.comma && tokens[1].type !== TokenType.colon) {
+            return; // we don't have a scope phase.
+        }
         let canContinue = true;
         const expressions: ExpressionNode[] = [];
         while(canContinue) {
             // we might not be able to match and remove quite yet.
             const property = matchAndRemove(TokenType.property);
             const comma = matchAndRemove(TokenType.comma);
-            if(peek()?.type !== TokenType.property && (tokens[2].type !== TokenType.comma && tokens[2].type !== TokenType.colon)) {
-                console.log("this isn't conforming with the scope");
-                return; // we aren't parsing a proper statement
+            if(!property) {
+                return;
             }
             if(!property) {
                 // this means we're completely done
@@ -214,70 +214,55 @@ export const parse = (tokens: Token[]): QueryNode | void => {
         const colon = matchAndRemove(TokenType.colon); // end of scope phase
         if(!colon) {
             // syntax error
+            // relook this, because we really don't need a scope phase explicitly
+            throw new Error("no colon")
         }
         return expressions;
     }
     const conditionPhase = (): ExpressionNode | void => {
-        // we expect .property|function condition .property|function or maybe a math expression or number or string
-        let canContinue = true;
-        const expressions: ExpressionNode[] = [];
-        while(canContinue) {
-            let token = tokens[0]; // get the first token
-            // expression operator expression
-            // .age = .one so we need a sign of some sort
-            // can incorporate parenthesis later
-            let expression: ExpressionNode;
-            // build expressions here
-            if(isOperator(token)) {
-                const operator = matchAndRemove(token.type);
-                // probably not right
-            }
-            else if(token.type === TokenType.property) {
-                const property = matchAndRemove(TokenType.property);
-            }
-            else if(isLiteral(token)) {
-                const litearl = parseLiteral(token);
-            }
-            else if(token.type === TokenType.function) {
-                const fn = parseFunction(token);
-            }
-             else {
-                canContinue = false;
-            }
-        }
+        // we expect .property|function|literal condition .property|function or maybe a math expression or number or string
+        const [expression, tkns] = parseExpression(tokens); // it's just a very long expression
+        tokens = tkns;
+        if(expression) return expression;
+        return;
     }
     const orderPhase = (bypassTilda: boolean): OrderByNode | void => {
         const tilda = matchAndRemove(TokenType.tilda);
         if(!tilda && !bypassTilda) return;
+        const order = matchAndRemove(TokenType.function);
         let ascOrDesc = matchAndRemove(TokenType.word);
         let ascendingString: "asc" | "desc" = "asc"
         if(ascOrDesc) {
             ascendingString = ascOrDesc.value === "asc"? "asc" : "desc";
         }
-        // this is optional
-        const limit = matchAndRemove(TokenType.function);
-        if(!limit) {
-            // return the entire collection, do we want to do it here? or in the interpreting stage.
-        }
-        const orderFunction = matchAndRemove(TokenType.function);
-        if(orderFunction) {
-            const functionNode = parseFunction(orderFunction);
-            return {
-                type: "OrderBy",
-                function: functionNode!, // change this, it could be undefined
-                direction: ascendingString
-            }
-        }
-        return { // why do we need an expression?
+        let orderby: OrderByNode = {
             type: "OrderBy",
             direction: ascendingString
         }
+        // this is optional
+        const limit = matchAndRemove(TokenType.function);
+        if(order) {
+            const functionNode = parseFunction(order);
+            orderby.function = functionNode;
+        }
+        if(limit) {
+            const limitNode = parseFunction(limit);
+            const number = parseInt(limit.value.slice(limit.value.indexOf("("), limit.value.lastIndexOf(")")));
+            orderby.limit = number;
+            // resolve here (we need to extract inside paren)
+        }
+        return orderby;
     }
 
     // this is per line
+    while(matchAndRemove(TokenType.newline) !== undefined); // remove new lines
     const scope = scopePhase()||undefined;
     const cond = conditionPhase()||undefined;
     const order = orderPhase(!scope && !cond ? true : false)||undefined; // if we have no scope or condition phase, we don't need a tilda
+    // log(scope);
+    console.log(cond || "not here");
+    console.log(order);
+    log(tokens.length + " tokens left");
     return {
         type: "Query",
         scope,
