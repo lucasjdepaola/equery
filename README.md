@@ -45,4 +45,7 @@ For example, dates are UTC standardized, so one might use the native function:
 length(.tweet) < 250 & .date < utc("5-23-2009")
 ```
 
+## Purpose
+
+The purpose of this language is to provide an easy way to query declarative data in a modular manner. Think about setting up a database, the process typically takes a few hours to properly set up, create tables, and manage data. Would you use this database to manage notes? Manage data science related data? Probably not. Databases by design are for industrial corporate purposes, with SQL not exactly friendly way to query such data. This language is complimentary with an interface/app to build or insert the data in a type-safe fashion. This way, we have a large list of type-following data, in a declarative and modular fashion, which can be queried using equery, or natural language which can translate to equery.
 
