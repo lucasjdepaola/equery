@@ -1,6 +1,6 @@
 # Equery
 
-Equery is the most intuitive way to query typed json patterns
+Equery is the most intuitive way to query typed json
 
 ## Syntax
 
