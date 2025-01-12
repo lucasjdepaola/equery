@@ -20,6 +20,16 @@ assume an object with the structure as follows
 We can now query this data in an intuitive and flexible way using equery, assuming we have a lot of people inside our list.
 
 Equery has 3 basic phases: the scope phase, the condition phase, and the ordering phase.
+Think of 
+```
+scope -> condition -> order
+```
+
+similar to
+```
+map() -> filter() -> sort()
+```
+
 ```
 .name: .age > 25 ~ orderby(.age) desc // find all people by name over age 25
 ```

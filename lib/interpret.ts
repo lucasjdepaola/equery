@@ -129,32 +129,17 @@ export const interpretExpression = (expression: ExpressionNode, data: JsonData):
 }
 
 export const interpret = (ast: QueryNode, data: JsonData[]): JsonData | QueryError | void => {
-    // we only interpret one query, having multiple queries is not possible (yet)
-    // break this up into more functions, we still need to handle the schematic/data aspect of interpretation
-    // we constantly refine the data with each step in the process
-    // the scope step shows the proper ordering for the data
-    // the condition step filters the data down under certain conditions
-    // the ordering step shows how to sort the data once it's refined
-    // so technically, we should actually perform the scope step last.
-    // all in all, here are the interpretation steps:
     // condition -> order/sort -> scope
-
+    // so basically, map() -> filter() -> sort(), but we do it in lossless order
     if(ast.conditions) {
-        data.map((value: JsonData) => {
-            // we need to have condition chains, like and(newcond).and(newcond).or(newcond)
-            // the value should be the property in this case now
-        })
         const conditions = ast.conditions;
-        if(conditions.type === "BinaryOp") {
-            // this means that it's a recursive operation
-            // can range from .age = 1, to .age = 1 & .age = 2 | .age = 3
-        }
-        else if(conditions.type === "Function") {
-            // this really should be an error, we can't really parse a singleton function yet
-        } else {
-            // throw error, literal or path don't conform at the root level
-            // this is an invalid statement: .name: .name or .name: today()
-        }
+        data.filter((value: JsonData) => {
+            const answer = interpretExpression(conditions, value);
+            if(answer.value) {
+                return true;
+            }
+            return false; // this is naive, needs more thorough reasoning
+        })
     }
 
     // now that we have a filtered down list, we can order the function

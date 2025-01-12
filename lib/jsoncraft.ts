@@ -22,6 +22,8 @@ export interface TypeData {
     required: boolean;
 }
 
+export type TypedJson = {type: JsonSchematic, data: {}[]};
+
 export interface JsonSchematic {
     title: string;
     properties: TypeData[]; // do we really need a value? or just types
@@ -46,4 +48,8 @@ export const isInsertionValid = (insertion: JsonData, schema: JsonSchematic): bo
         // if the property is in the schema and the values match, remove it from the queue
     }
     return false;
+}
+
+export const objectToJsonData = (obj: {}[]): JsonData|void => {
+    // we need it to be an object with a name and data
 }
