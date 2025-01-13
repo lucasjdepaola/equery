@@ -10,3 +10,20 @@ export const log = (...param: any[]) => {
         }
     }
 }
+
+const zip = <T extends readonly unknown[][]>(...arrays: [...T]): Array<Array<T[number][number]>> => {
+    /* result is an array of tuples */
+    const result: Array<Array<T[number][number]>> = [];
+
+    /* get the minimum length (if we want full tuples) */
+    const minLength = Math.min(...arrays.map(e => e.length));
+
+    /* iterate over each array to the min length, if the element[j][i] exists, push it */
+    for(let i = 0; i < arrays.length; i++) {
+        result[i] = [];
+        for(let j = 0; j < minLength; j++) {
+            arrays[j][i] && result[i].push(arrays[j][i]);
+        }
+    }
+    return result;
+}

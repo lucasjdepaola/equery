@@ -20,12 +20,12 @@ export interface FunctionNode extends BaseNode {
 
 export interface LiteralNode extends BaseNode {
     type: "Literal";
-    value: string | number | boolean
+    value: string | number | boolean;
 }
 
 interface BinaryOpNode extends BaseNode {
     type: "BinaryOp";
-    operator: string;
+    operator: Operator;
     left: ExpressionNode;
     right: ExpressionNode;
 }
@@ -83,7 +83,7 @@ const operatorPrecedence: {[key: string]: {precedence: number, associativity: st
     '=': { precedence: 1, associativity: 'left' },
 } as const;
 
-type Operator = "+" | "-" | "*" | "/" | "&" | "|" | ">" | "<" | "=";
+export type Operator = "+" | "-" | "*" | "/" | "&" | "|" | ">" | "<" | "=";
 
 const parseExpression = (tokens: Token[], minPrecedence?: number): [ExpressionNode | undefined, Token[]] => { // return the tokens back that are mutated
     const minPresedenceLocal: number = minPrecedence || 0;

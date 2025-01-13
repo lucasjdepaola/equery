@@ -11,6 +11,7 @@ export interface JsonData {
     property: JsonValue;
 }
 
+export type JsonTypeNames = "string" | "number" | "boolean" | "object" | "array";
 // for type checking
 export type TypePrimitive = {type: "string"} | {type: "number"} | {type: "boolean"};
 export type TypeArray = {type: "array", of: TypeAbstract};
@@ -22,7 +23,7 @@ export interface TypeData {
     required: boolean;
 }
 
-export type TypedJson = {type: JsonSchematic, data: {}[]};
+export type TypedJson = {type: JsonSchematic, data: JsonData[]};
 
 export interface JsonSchematic {
     title: string;
@@ -50,6 +51,57 @@ export const isInsertionValid = (insertion: JsonData, schema: JsonSchematic): bo
     return false;
 }
 
-export const objectToJsonData = (obj: {}[]): JsonData|void => {
-    // we need it to be an object with a name and data
+export const objtojsondata = (obj: {}): JsonData[] | undefined => {
+    const getKeyValue = (value: any, key: string): JsonData | undefined => {
+        if(typeof value === "boolean") {
+            // todo fix
+            return {
+                name: key,
+                property: {
+                    type: "boolean",
+                    value
+                }
+            }
+        }
+        else if(typeof value === "number") {
+            return {
+                name: key,
+                property: {
+                    type: "number",
+                    value
+                }
+            }
+        }
+        else if(typeof value === "string") {
+            return {
+                name: key,
+                property: {
+                    type: "string",
+                    value
+                }
+            }
+        }
+        else if(Array.isArray(value)) {
+            return {
+                name: key,
+                property: {
+                    type: "array",
+                    value
+                }
+            }
+        }
+        else if(typeof value === "object") {
+            // we do this recursively
+            // return objtojsondata(value);
+            // change
+        }
+        return undefined;
+    }
+    const data: JsonData[] = []
+    for(const key in obj) {
+        const value = obj[key];
+        const v = getKeyValue(value, key);
+        v && data.push(v);
+    }
+    return data;
 }

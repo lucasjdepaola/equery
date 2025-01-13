@@ -7,7 +7,7 @@
 
 import { errors, QueryError } from "./errors";
 import { JsonData, JsonObject, JsonValue } from "./jsoncraft";
-import { ExpressionNode, FunctionNode, LiteralNode, PropertyNode, QueryNode } from "./parse";
+import { ExpressionNode, FunctionNode, LiteralNode, Operator, PropertyNode, QueryNode } from "./parse";
 import * as fns from "./queryfunctions"
 
 // we can change it to another type of node that would account for some other values
@@ -29,7 +29,7 @@ export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode
             value: 1
         }
     })
-    if(fn.name in {foo: ""}) { // these are the lists of functions
+    if(fn.name in fns) { // these are the lists of functions
         try {
             const value = fns[fn.name](...args); // perform the function
             // TODO change functionsn into interface which return a literal value
@@ -81,16 +81,31 @@ const findProperty = (path: PropertyNode, data: JsonData): JsonData | QueryError
     return errors[1];
 }
 
-const shallowExpression = (left: LiteralNode, operator: string, right: LiteralNode): LiteralNode => {
-    let value: string | boolean | number;
+export type NativeType = "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function";
+const isType = (value: any, type: NativeType): boolean => typeof value === type;
+
+const shallowExpression = (left: LiteralNode, operator: Operator, right: LiteralNode): LiteralNode => {
+    let value: string | boolean | number = false;
     switch (operator) {
-        case '+': value = Number(left.value) + Number(right.value);
-        case '=': value = left.value === right.value;
-        case '>': value = left.value > right.value;
-        case '<': value = left.value < right.value;
-        case '&': value = Boolean(left.value) && Boolean(right.value);
-        case '|': value = Boolean(left.value) || Boolean(right.value);
-        default: value = -1;
+        case "+": {
+            if(typeof left.value !== "boolean" && typeof right.value !== "boolean") {
+                if(typeof left.value !== typeof right.value) {
+                    // change this
+                    value = left.value.toString() + right.value.toString() + "";
+                } else {
+                    value = Number(left.value) + Number(right.value);
+                }
+            }
+        }
+        case "-": value = Number(left.value) - Number(right.value);
+        case "*": value = Number(left.value) * Number(right.value);
+        case "/": value = Number(left.value) / Number(right.value);
+        case "=": value = left.value === right.value; // this is fine, precise comparison
+        case ">": value = left.value && right.value && left.value > right.value;
+        case "<": value = left.value < right.value;
+        case "&": value = Boolean(left.value) && Boolean(right.value);
+        case "|": value = Boolean(left.value) || Boolean(right.value);
+        default: value = -1; // return an error in this case
     }
     return {type: "Literal", value: value};
 }
@@ -135,6 +150,7 @@ export const interpret = (ast: QueryNode, data: JsonData[]): JsonData | QueryErr
         const conditions = ast.conditions;
         data.filter((value: JsonData) => {
             const answer = interpretExpression(conditions, value);
+            console.log("answer is " + answer); // do we need to recalculate every time?
             if(answer.value) {
                 return true;
             }

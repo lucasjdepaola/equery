@@ -5,6 +5,19 @@
 
 import { errors, QueryError } from "./errors";
 import { JsonData } from "./jsoncraft";
+import { FunctionNode, LiteralNode } from "./parse";
+
+interface EqueryFunction {
+    type: "aggregate" | "default";
+    // [key: string]: QueryFunction
+}
+
+type QueryFunction = (data: JsonData[], args?: LiteralNode[]) => LiteralNode | void;
+
+type AggregateFunction = (data: JsonData, property: FunctionNode | LiteralNode) => void; // change to proper aggregate pattern
+// orderby is arguably an aggregate
+
+// the arguments should be changed to [literalnode] because all expressions return literal nodes
 
 export const containsError = (data: JsonData | QueryError): boolean => {
     return "error" in data;
@@ -30,12 +43,6 @@ export const count = (values: any[]): number => {
     return values.length;
 }
 
-export const aggregateFunctions = {
-    max, min, average, sum, count
-}
-
-
-// basic functions
 
 export const lowercase = (value: string): string => {
     return value.toLowerCase();
@@ -48,8 +55,6 @@ export const uppercase = (value: string): string => {
 export const toUTC = (date: string): number => {
     return 1;
 }
-
-// we need a method to find the object property based on a string such as self.sub.age like this
 
 // string functions
 export const contains = (expression: string, value: string) => {
@@ -65,11 +70,10 @@ export const contains = (expression: string, value: string) => {
 // if it's not in mm then do mmfromft(.size) then convert back
 // file name is .eq
 
-
 // conversions
 
-export const ft = (mm: number) => {
-    return mm * 100; // change to the proper conversion
+export const ft = (inft: number) => {
+    return inft * 100; // change to the proper conversion
 }
 
 // date lib
@@ -124,6 +128,3 @@ export const parseDate = (date: string, fmt?: string): Date => {
     }
     return new Date();
 }
-
-const date = parseDate("07-24-2003");
-console.log(date.getFullYear());

@@ -79,6 +79,14 @@ interface Tweet {
     video?: string;
 }
 
+interface Person {
+    name: string;
+    age: number;
+    isMarried: boolean;
+    spouse?: Person;
+    birthday?: number; // utc, or you could do it as a string, either way
+}
+
 // we want some sort of way to auto complete things like this for the user experience
 // just make the value : JSON and type it, we don't have to build a json parser for this
 const data: Tweet[] | {}[] = [
@@ -92,7 +100,7 @@ const data: Tweet[] | {}[] = [
     }
 ]
 
-export const tweetExamples: TypedJson = {
-    type: userschema,
-    data: data
-}
+// export const tweetExamples: TypedJson = {
+//     type: userschema,
+//     // data: data
+// }
