@@ -15,6 +15,11 @@ export const errors: QueryError[] = [
         error: "error",
         code: 1,
         message: "Property error, cannot find property. Ensure property exists."
+    },
+    {
+        error: "error",
+        code: 2,
+        message: "data provided is not an array of objects."
     }
 
 ]

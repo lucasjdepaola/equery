@@ -84,6 +84,20 @@ const operatorPrecedence: {[key: string]: {precedence: number, associativity: st
 } as const;
 
 export type Operator = "+" | "-" | "*" | "/" | "&" | "|" | ">" | "<" | "=";
+export const OperatorMap = {
+    "+": "add",
+    "-": "subtract",
+    "*": "multiply",
+    "/": "divide",
+    "&": "and logic",
+    "|": "or logic",
+    ">": "greater than logic",
+    "<": "less than logic",
+    "=": "equal logic",
+}
+
+export type OperatorValue = typeof OperatorMap;
+export type OperatorMeaning = keyof OperatorValue;
 
 const parseExpression = (tokens: Token[], minPrecedence?: number): [ExpressionNode | undefined, Token[]] => { // return the tokens back that are mutated
     const minPresedenceLocal: number = minPrecedence || 0;

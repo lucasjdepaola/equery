@@ -1,3 +1,5 @@
+import { errors, QueryError } from "./errors";
+
 // for type implementation
 export type JsonPrimitive = 
 {value: string, type: "string"}
@@ -12,6 +14,14 @@ export interface JsonData {
 }
 
 export type JsonTypeNames = "string" | "number" | "boolean" | "object" | "array";
+const getJsonType = (data: any): JsonTypeNames => {
+    if(typeof data === "string") return "string";
+    if(typeof data === "number") return "number";
+    if(typeof data === "boolean") return "boolean";
+    if(Array.isArray(data)) return "array";
+    if(typeof data === "object") return "object";
+    return "object";
+}
 // for type checking
 export type TypePrimitive = {type: "string"} | {type: "number"} | {type: "boolean"};
 export type TypeArray = {type: "array", of: TypeAbstract};
@@ -104,4 +114,81 @@ export const objtojsondata = (obj: {}): JsonData[] | undefined => {
         v && data.push(v);
     }
     return data;
+}
+
+const getType = (value: any): TypeAbstract => {
+    let type = getJsonType(value);
+    if(type === "array") {
+        const of = getType(value[0]); // first index for now
+        return {
+            type, of
+        }
+    }
+    if(type === "object") {
+        const of: TypeData[] = Object.keys(value).map((v: string) => {
+            return {
+                abstract: getType(value[v]),
+                "name": v,
+                "required": false
+            }
+        });
+        return {
+            type, of
+        }
+    }
+    return {
+        type,
+    }
+}
+
+const getProperties = (data: JsonData): TypeData[] | QueryError => {
+    const properties: TypeData[] = [];
+    if(data.property.type !== "object") {
+        return errors[2];
+    }
+    for(const property of data.property.value) {
+        // this doesnt make any sense
+        properties.push({
+            name: property.name,
+            abstract: getType(property),
+            required: false,
+        })
+    }
+    return properties;
+}
+
+export const compareSchemas = (prev: TypeData[], current: TypeData[]): TypeData[]|void => {
+
+}
+
+export const inferSchema = (data: JsonData[]): JsonSchematic|void => {
+    // the schema though, is title: string, properties: properties
+    // so we're one layer above what it should be.
+    // this assumes we're already in the array, it's hard because of how recursive it is
+    const schema: JsonSchematic = {
+        "title": "title",
+        "properties": []
+    }
+    for(let i = 0; i < data.length; i++) {
+        const insertion = data[i];
+        if((insertion.property.type === "object")) {
+            const properties = getProperties(insertion);
+            if(!("error" in properties)) {
+                const data: TypeObject = {
+                    type: "object",
+                    of: properties
+                }
+                // compare again
+                let obj: TypeData = {
+                    name: insertion.name,
+                    abstract: data,
+                    required: false
+                }
+                // schema.properties = compareSchemas(schema.properties, data.of);
+                schema.properties.push();
+            }
+        } else {
+            // maybe throw error, we don't need non objects really
+        }
+    }
 }

@@ -1,78 +1,95 @@
 // below are the listed functions that equery supports
 // max(.num) min(.num), utc(.date) average(.num) sum(.num) lowercase(.string) uppercase(.string)
 // count(.any) orderby(.any, desc|asc)
-// these are supposed to be majorly the native static functions, not the live implementation of the language itself.
 
-import { errors, QueryError } from "./errors";
+import { QueryError } from "./errors";
 import { JsonData } from "./jsoncraft";
 import { FunctionNode, LiteralNode } from "./parse";
 
-interface EqueryFunction {
-    type: "aggregate" | "default";
-    // [key: string]: QueryFunction
+interface Functions {
+    max: AggregateFunction;
+    min: AggregateFunction;
+    average: AggregateFunction;
+    sum: AggregateFunction;
+    count: AggregateFunction;
+    contains: AggregateFunction;
+    lowercase: QueryFunction;
+    uppercase: QueryFunction;
+    ft: QueryFunction;
+    toUTC: QueryFunction;
+    today: QueryFunction;
+    parseDate: QueryFunction;
+    years: QueryFunction;
+    yearsfromdate: QueryFunction;
+    ytoday: QueryFunction;
 }
+/* how we'd do it is:
+if(fn.name in functions) {
+const nativefn = functions[fn.name];
+if(nativefn.type === "aggregate") {
+// handle differently and cache answer
+}
+}
+*/
 
 type QueryFunction = (data: JsonData[], args?: LiteralNode[]) => LiteralNode | void;
 
-type AggregateFunction = (data: JsonData, property: FunctionNode | LiteralNode) => void; // change to proper aggregate pattern
-// orderby is arguably an aggregate
+type AggregateFunction = (data: JsonData, arg: FunctionNode | LiteralNode) => void; // change to proper aggregate pattern
 
-// the arguments should be changed to [literalnode] because all expressions return literal nodes
-
-export const containsError = (data: JsonData | QueryError): boolean => {
-    return "error" in data;
-}
-
-export const max = (values: number[]): number => {
+// the hardest case is max(length(.age))
+// max(length(today()))
+// move to functions/aggregate.ts
+const max = (values: number[]): number => {
     return Math.max(...values);
 }
 
-export const min = (values: number[]): number => {
+const min = (values: number[]): number => {
     return Math.min(...values)
 }
 
-export const average = (values: number[]): number => {
+const average = (values: number[]): number => {
     return sum(values) / values.length;
 }
 
-export const sum = (values: number[]): number => {
+const sum = (values: number[]): number => {
     return values.reduce((prev: number, current: number) => prev + current);
 }
 
-export const count = (values: any[]): number => {
+const count = (values: any[]): number => {
     return values.length;
 }
 
 
-export const lowercase = (value: string): string => {
-    return value.toLowerCase();
+const lowercase = (value: LiteralNode): string | QueryError => {
+    if(typeof value.value === "string")
+        return value.value.toLowerCase();
+    return "";
 }
 
-export const uppercase = (value: string): string => {
-    return value.toUpperCase();
+const uppercase = (value: LiteralNode): string => {
+    if(typeof value.value === "string") {
+        return value.value.toUpperCase();
+    }
+    return ""; // error change to
 }
 
-export const toUTC = (date: string): number => {
+const toUTC = (date: string): number => {
     return 1;
 }
 
 // string functions
 export const contains = (expression: string, value: string) => {
     const regex: RegExp = new RegExp(expression);
+    // or could do string.includes(), etc
     return regex.test(value);
 }
 // we could find a way to leverage the functions native to javascript
-
-// more to add below
 // yearsfromdate(.number), senator is yearsfromdate(.birthdate) years old
 // .name: yearstoday(.birthday)
 // ft(.sizeinmm)
-// if it's not in mm then do mmfromft(.size) then convert back
-// file name is .eq
 
 // conversions
-
-export const ft = (inft: number) => {
+const ft = (inft: number) => {
     return inft * 100; // change to the proper conversion
 }
 
@@ -95,19 +112,19 @@ export const yearsfromdate = (utc: number): number => {
 // note: we only really need to use years() for simple functions, we don't always need it.
 // like this: years(.date) = years(today())
 
-export const years = (utc: number) => {
+const years = (utc: number) => {
     // return the number of years from a utc date which is a native integer
     return new Date(utc).getFullYear(); // this should return something like 2024/2023, etc
 }
 
-export const today = (): number => {
+const today = (): number => {
     return Date.now(); // return the date in utc
 }
-export const ytoday = (): number => {
+const ytoday = (): number => {
     return new Date().getFullYear(); // get todays date in years
 }
 
-export const parseDate = (date: string, fmt?: string): Date => {
+const parseDate = (date: string, fmt?: string): Date => {
     // we can accept a formatting which would include mdy dmy, etc.
     // without this, we would assume that the date would be mm-dd-yyyy
     // valid formats of a user inputted date
@@ -127,4 +144,11 @@ export const parseDate = (date: string, fmt?: string): Date => {
         // space case
     }
     return new Date();
+}
+export const functions: Functions | any = {
+    min, max, sum, average, count, contains, // aggregate functions
+    uppercase, lowercase, // string functions
+    // number functions
+    ft, // metric conversions
+    toUTC, today, parseDate, years, yearsfromdate, ytoday // date functions
 }

@@ -1,3 +1,6 @@
+import { QueryError } from "../errors";
+import { JsonData } from "../jsoncraft";
+
 export const log = (...param: any[]) => {
     const error = new Error();
     const stack = error.stack?.split('\n');
@@ -26,4 +29,8 @@ const zip = <T extends readonly unknown[][]>(...arrays: [...T]): Array<Array<T[n
         }
     }
     return result;
+}
+
+export const containsError = (data: JsonData | QueryError): boolean => {
+    return "error" in data;
 }

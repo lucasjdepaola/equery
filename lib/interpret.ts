@@ -82,7 +82,6 @@ const findProperty = (path: PropertyNode, data: JsonData): JsonData | QueryError
 }
 
 export type NativeType = "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function";
-const isType = (value: any, type: NativeType): boolean => typeof value === type;
 
 const shallowExpression = (left: LiteralNode, operator: Operator, right: LiteralNode): LiteralNode => {
     let value: string | boolean | number = false;
