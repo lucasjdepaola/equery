@@ -48,6 +48,7 @@ length(.name) > 5 | .height > ft(10)
 // tests(".name: .age = max(.age)");
 // tests(".name: length(.name) > max(length(.name)) ~ orderby(.age)")
 tests('.username = "lucas"')
+tests('.usermame = "lucas" & .likes > 10')
 // console.log(JSON.stringify(data));
 
 // log("hello world");
