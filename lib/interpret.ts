@@ -109,6 +109,23 @@ const shallowExpression = (left: LiteralNode, operator: Operator, right: Literal
     return {type: "Literal", value: value};
 }
 
+const groupby = (expression: ExpressionNode, data: JsonData[]) => { // not a trivial problem, but can be done
+    // we need this to have one property involved.
+    // so if it's length(.property) then you'd base it on a property
+    // i guess it doesn't really need to be property based, but yeah.
+}
+export const groupBy = (arr: any[], key: any) =>{
+    // now let's change it to property based
+    // we calulate the property or expression, and get the answer
+    return arr.reduce((pv, cv) => (
+        {
+            ...pv,
+            [cv[key]]: [...pv[cv[key]]||[], cv]
+            // || [] // we may not need this line
+        }
+    ), {});
+}
+
 export const interpretExpression = (expression: ExpressionNode, data: JsonData):LiteralNode => {
     // expressions 
     // expressions are a superset to regular function() interpretation, yet, a function() can contain an expression.

@@ -241,6 +241,7 @@ export const parse = (tokens: Token[]): QueryNode | void => {
         return;
     }
     const orderPhase = (bypassTilda: boolean): OrderByNode | void => {
+        // we want a potential group by phase as well
         const tilda = matchAndRemove(TokenType.tilda);
         if(!tilda && !bypassTilda) return;
         const order = matchAndRemove(TokenType.function);
