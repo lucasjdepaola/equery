@@ -6,30 +6,61 @@
 */
 
 import { errors, QueryError } from "./errors";
+import { log } from "./global/console";
 import { JsonData, JsonObject, JsonValue } from "./jsoncraft";
 import { ExpressionNode, FunctionNode, LiteralNode, Operator, PropertyNode, QueryNode } from "./parse";
 import * as fns from "./queryfunctions"
 
 // we can change it to another type of node that would account for some other values
-export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode => {
-    const args: LiteralNode[] = fn.arguments.map((expression: ExpressionNode) => {
+export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode | QueryError => {
+    const args: (LiteralNode | QueryError)[] = fn.arguments.map((expression: ExpressionNode) => {
         // we need interpretExpression as well
         /// we should handle the expression with interpretexpression()
         if(expression.type === "Function") {
-            const subfn = interpretFunction(fn, data);
+            const subfn = interpretFunction(expression, data);
+            return subfn;
         }
         else if(expression.type == "BinaryOp") {
-
+            return interpretExpression(expression, data);
         }
         else if(expression.type === "Literal") {
             return expression;
         }
-        return { // placeholder
-            type: "Literal",
-            value: 1
+        else if(expression.type === "Property") {
+            // handle property
+            const value = findPropertyValue(expression, data);
+            if("error" in value) {
+                return value;
+            }
+            if(value.type === "array" || value.type === "object") {
+                // we cannot do this
+                throw new Error("cannot perform expressions on arrays or objects");
+            }
+            // we need to know that we can't do expressions on certain types
+            // so we need to confine it down to singular values, not arrays
+            const literalNode: LiteralNode = {
+                type: "Literal",
+                value: value.value
+            }
+            return literalNode;
         }
+        const error = errors[3];
+        error.additional = "line 29, expression isn't a function, binaryop, or literal, does not conform with logic";
+        // error.additional += " the type is " + expression.type;
+        return error;
     })
+    if(args.some(v => "error" in v)) {
+        const error = errors[4];
+        error.additional = "arguments are here: " + args.reduce((p, c) => {
+            if("error" in c) {
+                return p + ", error: " + c.message;
+            }
+            return p + "nonerror: " + c.value
+        }, "");
+        return error;
+    }
     if(fn.name in fns) { // these are the lists of functions
+        console.log(" we can perform the function "); // change though
         try {
             const value = fns[fn.name](...args); // perform the function
             // TODO change functionsn into interface which return a literal value
@@ -45,20 +76,30 @@ export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode
 }
 
 const findPropertyValue = (propertyPath: PropertyNode, data: JsonData): JsonValue|QueryError => {
-    let value: JsonValue = data.property;
+    let value: JsonValue | undefined = data.property;
     for(const propertyName of propertyPath.path) {
         if(data.property.type === "object" && data.property.value) {
-            if(value.value) {
-                value = value.value[propertyName];
+            if(value && value.value) {
+                // value = value.value[propertyName];
+                value = data.property.value.find((d) => d.name === propertyName)?.property;
+                console.log("We've found the path specified");
             } else {
-                return errors[1];
+                log("WE cannot find the property specified");
+                return {
+                    type: "boolean", // we return false if we cannot find a property, no need for more than that
+                    value: false
+                }
             }
         }
     }
     if(value) {
         return value;
     }
-    return errors[1];
+    log("Cannot find the property specified");
+    return {
+        type: "boolean", // we return false if we cannot find a property, no need for more than that
+        value: false
+    }
 }
 
 const findProperty = (path: PropertyNode, data: JsonData): JsonData | QueryError => {
@@ -71,11 +112,20 @@ const findProperty = (path: PropertyNode, data: JsonData): JsonData | QueryError
                     property: data.property.value[propertyName]
                 }
             } else {
-                return errors[1];
+                // don't return that, return false if you can't find it
+                log("We cannot find the property, defaulting to false");
+                return {
+                    "name": "undefined",
+                    property: {
+                        type: "boolean",
+                        value: false
+                    }
+                }
             }
         }
     }
     if(value) {
+        log("We have found the property (temp)");
         return value;
     }
     return errors[1];
@@ -83,7 +133,7 @@ const findProperty = (path: PropertyNode, data: JsonData): JsonData | QueryError
 
 export type NativeType = "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function";
 
-const shallowExpression = (left: LiteralNode, operator: Operator, right: LiteralNode): LiteralNode => {
+const shallowExpression = (left: LiteralNode, operator: Operator, right: LiteralNode): LiteralNode | QueryError => {
     let value: string | boolean | number = false;
     switch (operator) {
         case "+": {
@@ -96,15 +146,27 @@ const shallowExpression = (left: LiteralNode, operator: Operator, right: Literal
                 }
             }
         }
+        break;
         case "-": value = Number(left.value) - Number(right.value);
+        break;
         case "*": value = Number(left.value) * Number(right.value);
+        break;
         case "/": value = Number(left.value) / Number(right.value);
+        break;
         case "=": value = left.value === right.value; // this is fine, precise comparison
+        break;
         case ">": value = left.value && right.value && left.value > right.value;
+        break;
         case "<": value = left.value < right.value;
+        break;
         case "&": value = Boolean(left.value) && Boolean(right.value);
+        break;
         case "|": value = Boolean(left.value) || Boolean(right.value);
-        default: value = -1; // return an error in this case
+        break;
+        default: {
+            log(`'${operator}' is the erroring operator`);
+            return errors[3];
+        }
     }
     return {type: "Literal", value: value};
 }
@@ -117,6 +179,9 @@ const groupby = (expression: ExpressionNode, data: JsonData[]) => { // not a tri
 export const groupBy = (arr: any[], key: any) =>{
     // now let's change it to property based
     // we calulate the property or expression, and get the answer
+    // we should go from jsondata[] and return jsondata[] except it's keys
+    // of the trait we want (i.e): 1: {} // objects
+    // going to be very challenging, likely a day problem
     return arr.reduce((pv, cv) => (
         {
             ...pv,
@@ -126,12 +191,15 @@ export const groupBy = (arr: any[], key: any) =>{
     ), {});
 }
 
-export const interpretExpression = (expression: ExpressionNode, data: JsonData):LiteralNode => {
+export const interpretExpression = (expression: ExpressionNode, data: JsonData):LiteralNode | QueryError => {
     // expressions 
     // expressions are a superset to regular function() interpretation, yet, a function() can contain an expression.
     if(expression.type === "BinaryOp") {
         const left = interpretExpression(expression.left, data); // might be inefficient to ref a lot
         const right = interpretExpression(expression.right, data);
+        if("error" in left || "error" in right) {
+            return errors[3];
+        }
         const operator = expression.operator;
         return shallowExpression(left, operator, right);
     }
@@ -159,15 +227,20 @@ export const interpretExpression = (expression: ExpressionNode, data: JsonData):
     }
 }
 
-export const interpret = (ast: QueryNode, data: JsonData[]): JsonData | QueryError | void => {
+export const interpret = (ast: QueryNode, data: JsonData[]): JsonData[] | QueryError | void => {
     // condition -> order/sort -> scope
     // so basically, map() -> filter() -> sort(), but we do it in lossless order
     if(ast.conditions) {
         const conditions = ast.conditions;
-        data.filter((value: JsonData) => {
+        data = data.filter((value: JsonData) => {
             const answer = interpretExpression(conditions, value);
-            console.log("answer is " + answer); // do we need to recalculate every time?
-            if(answer.value) {
+            console.log("stringified answer of the condition phase is " + JSON.stringify(answer));
+            console.log("NOTE: this is within a data context");
+            if("error" in answer) {
+                console.log("error");
+            }
+            else if(answer.value === true) {
+                console.log("We've returned true");
                 return true;
             }
             return false; // this is naive, needs more thorough reasoning
@@ -186,6 +259,20 @@ export const interpret = (ast: QueryNode, data: JsonData[]): JsonData | QueryErr
                 const one = interpretFunction(orderby, a);
                 // change to a simple getproperty
                 const two = interpretFunction(orderby, b);
+                if("error" in one) {
+                    log('f');
+                    log(one.code);
+                    log(one.message);
+                    log(one.additional);
+                    throw new Error("cannot do this");
+                }
+                if("error" in two) {
+                    log(two.code);
+                    log(two.message);
+                    log(two.additional);
+                    log("F");
+                    throw new Error("cannot do this");
+                }
                 if(typeof one.value === "number" && typeof two.value === "number") {
                     if(isAscending) {
                         return one.value - two.value;
@@ -248,4 +335,5 @@ export const interpret = (ast: QueryNode, data: JsonData[]): JsonData | QueryErr
         // recursive filter properties that only include certain names involved in the scope relative to their level
     }
     // else if()
+    return data; // return the data
 }

@@ -61,7 +61,7 @@ export const isInsertionValid = (insertion: JsonData, schema: JsonSchematic): bo
     return false;
 }
 
-export const objtojsondata = (obj: {}): JsonData[] | undefined => {
+export const objtojsondata = (obj: {}, title: string): JsonData | undefined => {
     const getKeyValue = (value: any, key: string): JsonData | undefined => {
         if(typeof value === "boolean") {
             // todo fix
@@ -102,8 +102,7 @@ export const objtojsondata = (obj: {}): JsonData[] | undefined => {
         }
         else if(typeof value === "object") {
             // we do this recursively
-            // return objtojsondata(value);
-            // change
+            return objtojsondata(value, key);
         }
         return undefined;
     }
@@ -113,7 +112,14 @@ export const objtojsondata = (obj: {}): JsonData[] | undefined => {
         const v = getKeyValue(value, key);
         v && data.push(v);
     }
-    return data;
+    return {
+        name: title,
+        property: {
+            name: title,
+            type: "object",
+            value: data
+        }
+    }
 }
 
 const getType = (value: any): TypeAbstract => {

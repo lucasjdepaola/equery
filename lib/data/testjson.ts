@@ -87,9 +87,18 @@ interface Person {
     birthday?: number; // utc, or you could do it as a string, either way
 }
 
+const examplePerson: Person[] | {}[] = [
+    {
+        name: "mark",
+        age: 500,
+        isMarried: true,
+        birthday: new Date("10-10-2000")
+    }
+]
+
 // we want some sort of way to auto complete things like this for the user experience
 // just make the value : JSON and type it, we don't have to build a json parser for this
-const data: Tweet[] | {}[] = [
+export const tweetdata: Tweet[] | {}[] = [
     { // we'd use the auto generated interface for this
         username: "lucas",
         likes: 10,
@@ -97,8 +106,17 @@ const data: Tweet[] | {}[] = [
         date: new Date("1996-06-06").getUTCDate(),
         replies: [],
         text: "this is a test tweet",
-    }
+    },
+    { // we'd use the auto generated interface for this
+        username: "for",
+        likes: 20,
+        retweets: 10,
+        date: new Date("1996-06-06").getUTCDate(),
+        replies: [],
+        text: "hello world",
+    },
 ]
+
 
 // export const tweetExamples: TypedJson = {
 //     type: userschema,

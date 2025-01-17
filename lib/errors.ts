@@ -1,8 +1,11 @@
+import { log } from "./global/console";
+
 export interface QueryError {
     error: "error"
     code: number;
     message: string;
     line?: string;
+    additional?: string;
 }
 
 export const errors: QueryError[] = [
@@ -20,6 +23,31 @@ export const errors: QueryError[] = [
         error: "error",
         code: 2,
         message: "data provided is not an array of objects."
+    },
+    {
+        error: "error",
+        code: 3,
+        message: "incompatible expression, cannot perform operation"
+    },
+    {
+        error: "error",
+        code: 4,
+        message: "cannot interpret function, incompatible expressions, arguments contain errors."
+    },
+    {
+        error: "error",
+        code: 5,
+        message: "Error in orderby phase."
     }
 
 ]
+
+export const displayError = (e: QueryError) => {
+    console.log("::::")
+    log("line information");
+    console.log("ERROR LOG")
+    console.log(`error code: ${e.code}`)
+    console.log(`message: ${e.message}`)
+    console.log(e.additional)
+    console.log(":::");
+}
