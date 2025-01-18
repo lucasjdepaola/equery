@@ -48,7 +48,12 @@ length(.name) > 5 | .height > ft(10)
 // tests(".name: .age = max(.age)");
 // tests(".name: length(.name) > max(length(.name)) ~ orderby(.age)")
 tests('.username = "lucas"')
-tests('.usermame = "lucas" & .likes > 10')
+tests('.username = "lucas" & .likes > 5')
+tests('.username = "lucas" & .likes > 5 & .retweets > 9')
+tests('.name: length(.username) > 2 & .likes > 1')
+tests('.name: .likes < 100 | .likes = 1')
+// figure out why we can't do nested functions yet
+// it's because we don't have working functions yet.
 // console.log(JSON.stringify(data));
 
 // log("hello world");

@@ -107,13 +107,21 @@ export const tweetdata: Tweet[] | {}[] = [
         replies: [],
         text: "this is a test tweet",
     },
-    { // we'd use the auto generated interface for this
-        username: "for",
+    {
+        username: "lucas",
         likes: 20,
         retweets: 10,
         date: new Date("1996-06-06").getUTCDate(),
         replies: [],
         text: "hello world",
+    },
+    {
+        username: "electroencephalograph",
+        likes: 40,
+        retweets: 5,
+        date: new Date("1996-06-06").getUTCDate(),
+        replies: [],
+        text: "this is a test message",
     },
 ]
 

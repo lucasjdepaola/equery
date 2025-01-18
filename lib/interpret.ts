@@ -197,6 +197,9 @@ export const interpretExpression = (expression: ExpressionNode, data: JsonData):
     if(expression.type === "BinaryOp") {
         const left = interpretExpression(expression.left, data); // might be inefficient to ref a lot
         const right = interpretExpression(expression.right, data);
+        console.log(left);
+        console.log(right);
+        console.log("left, right");
         if("error" in left || "error" in right) {
             return errors[3];
         }

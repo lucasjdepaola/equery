@@ -60,6 +60,18 @@ const count = (values: any[]): number => {
 }
 
 
+const length = () => {
+    // length(.name) for strings, numbers, or whatever really
+}
+
+const rank = () => {
+    // our first mix of both aggregate and non aggregate, tricky
+}
+
+const irank = () => {
+
+}
+
 const lowercase = (value: LiteralNode): string | QueryError => {
     if(typeof value.value === "string")
         return value.value.toLowerCase();
