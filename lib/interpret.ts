@@ -9,7 +9,7 @@ import { errors, QueryError } from "./errors";
 import { log } from "./global/console";
 import { JsonData, JsonObject, JsonValue } from "./jsoncraft";
 import { ExpressionNode, FunctionNode, LiteralNode, Operator, PropertyNode, QueryNode } from "./parse";
-import * as fns from "./queryfunctions"
+import { functions } from "./queryfunctions";
 
 // we can change it to another type of node that would account for some other values
 export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode | QueryError => {
@@ -59,10 +59,12 @@ export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode
         }, "");
         return error;
     }
-    if(fn.name in fns) { // these are the lists of functions
+    if(fn.name in functions) { // these are the lists of functions
         console.log(" we can perform the function "); // change though
+        // perhaps precalculate all aggregates that are used before performing loop
+        // would be a cache optimization
         try {
-            const value = fns[fn.name](...args); // perform the function
+            const value = functions[fn.name](data, args); // perform the function
             // TODO change functionsn into interface which return a literal value
             value
         } catch(e) {
@@ -76,6 +78,9 @@ export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode
 }
 
 const findPropertyValue = (propertyPath: PropertyNode, data: JsonData): JsonValue|QueryError => {
+    // change to findproperty().value below
+    // const property = findProperty(propertyPath, data);
+    // we dont need the rest
     let value: JsonValue | undefined = data.property;
     for(const propertyName of propertyPath.path) {
         if(data.property.type === "object" && data.property.value) {
@@ -307,10 +312,7 @@ export const interpret = (ast: QueryNode, data: JsonData[]): JsonData[] | QueryE
                 if(e.type === "Property") {
                     // this is the most common case. a reference such as .age, .name
                     properties.push(e);
-                    // accumulate values
-                    // figure out from here
                     const property = findProperty(e, value);
-                    // values[e.path]
                     if(!("error" in property)) {
                         // values[e.path[0]] = property;
                         values.value.push({
@@ -323,16 +325,18 @@ export const interpret = (ast: QueryNode, data: JsonData[]): JsonData[] | QueryE
                 }
                 else if(e.type === "Literal") {
                     // this is an error case, throw an error
+                    throw new Error("Cannot use literal values in scope phase");
                 }
                 else if(e.type === "Function") {
                     // this is a more advanced usecase, for things like aggregate,
                     // i.e: max(.age): conds
                     // do or don't implement.
+                    throw new Error("Cannot use functions in the scope phase for now.");
                 }
             });
             return {
                 name: "foo",
-                property: values
+                property: values // change to incorporate this into data instead of early return
             }
         })
         // recursive filter properties that only include certain names involved in the scope relative to their level

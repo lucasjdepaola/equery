@@ -38,8 +38,12 @@ export const errors: QueryError[] = [
         error: "error",
         code: 5,
         message: "Error in orderby phase."
-    }
-
+    },
+    {
+        error: "error",
+        code: 6,
+        message: "Cannot get length of datatype. Ensure the datatype is a string or array."
+    },
 ]
 
 export const displayError = (e: QueryError) => {

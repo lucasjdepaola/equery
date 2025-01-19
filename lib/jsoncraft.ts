@@ -61,6 +61,23 @@ export const isInsertionValid = (insertion: JsonData, schema: JsonSchematic): bo
     return false;
 }
 
+export const jsontoobjdata = (data: JsonData): {} => {
+    let obj = {};
+    if(data.property.type === "object") {
+        data.property.name;
+        data.property.value
+        for(const property of data.property.value) {
+            if(property.property.type === "object") {
+                // obj[property.name] = jsontoobjdata(property.property.value);
+            } else {
+                obj[property.name] = property;
+            }
+        }
+    }
+    return {};
+    // else, we need to handle it differently
+}
+
 export const objtojsondata = (obj: {}, title: string): JsonData | undefined => {
     const getKeyValue = (value: any, key: string): JsonData | undefined => {
         if(typeof value === "boolean") {

@@ -2,7 +2,7 @@
 // max(.num) min(.num), utc(.date) average(.num) sum(.num) lowercase(.string) uppercase(.string)
 // count(.any) orderby(.any, desc|asc)
 
-import { QueryError } from "./errors";
+import { errors, QueryError } from "./errors";
 import { JsonData } from "./jsoncraft";
 import { FunctionNode, LiteralNode } from "./parse";
 
@@ -22,6 +22,7 @@ interface Functions {
     years: QueryFunction;
     yearsfromdate: QueryFunction;
     ytoday: QueryFunction;
+    length: QueryFunction;
 }
 /* how we'd do it is:
 if(fn.name in functions) {
@@ -32,9 +33,11 @@ if(nativefn.type === "aggregate") {
 }
 */
 
-type QueryFunction = (data: JsonData[], args?: LiteralNode[]) => LiteralNode | void;
+type QueryFunction = (data: JsonData, args?: LiteralNode[]) => LiteralNode | QueryError;
+// so far, we only need a single instance of data for the query function
 
-type AggregateFunction = (data: JsonData, arg: FunctionNode | LiteralNode) => void; // change to proper aggregate pattern
+type AggregateFunction = (data: JsonData[], arg: FunctionNode | LiteralNode) => void; // change to proper aggregate pattern
+// for aggregates, we need the data array to determine it
 
 // the hardest case is max(length(.age))
 // max(length(today()))
@@ -60,8 +63,25 @@ const count = (values: any[]): number => {
 }
 
 
-const length = () => {
+const length: QueryFunction = (data: JsonData, args?: LiteralNode[]): LiteralNode | QueryError => {
     // length(.name) for strings, numbers, or whatever really
+    // we shouldn't do it like this
+    if(args) {
+        let value = args[0];
+        if(typeof value.value === "string") {
+            return {
+                type: "Literal",
+                value: value.value.length // this is not concise
+            }
+        }
+        if(Array.isArray(value.value)) {
+            return {
+                type: "Literal",
+                value: value.value.length
+            }
+        }
+    }
+    return errors[6];
 }
 
 const rank = () => {
@@ -69,10 +89,10 @@ const rank = () => {
 }
 
 const irank = () => {
-
+    // inverse rank, for things that need lower value (like price being low)
 }
 
-const lowercase = (value: LiteralNode): string | QueryError => {
+const lowercase = (data: JsonData, value: LiteralNode): string | QueryError => {
     if(typeof value.value === "string")
         return value.value.toLowerCase();
     return "";
@@ -162,5 +182,6 @@ export const functions: Functions | any = {
     uppercase, lowercase, // string functions
     // number functions
     ft, // metric conversions
-    toUTC, today, parseDate, years, yearsfromdate, ytoday // date functions
+    toUTC, today, parseDate, years, yearsfromdate, ytoday, // date functions
+    length // multi datatype functions
 }
