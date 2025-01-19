@@ -35,9 +35,11 @@ if(nativefn.type === "aggregate") {
 
 type QueryFunction = (data: JsonData, args?: LiteralNode[]) => LiteralNode | QueryError;
 // so far, we only need a single instance of data for the query function
+// we want literal nodes to also contain array or object values
 
-type AggregateFunction = (data: JsonData[], arg: FunctionNode | LiteralNode) => void; // change to proper aggregate pattern
+type AggregateFunction = (data: JsonData[], arg: FunctionNode | LiteralNode) => LiteralNode | QueryError; // change to proper aggregate pattern
 // for aggregates, we need the data array to determine it
+const isAggregate = (fn: QueryFunction | AggregateFunction) => "length" in fn.arguments[0];
 
 // the hardest case is max(length(.age))
 // max(length(today()))
@@ -62,12 +64,18 @@ const count = (values: any[]): number => {
     return values.length;
 }
 
+export const aggregateFunctions = {
+    max, min, average, sum, count
+} // this will do, we don't need regular functions, we can simply do ! in aggregate
+// might need to change the philosophy behind building functions, we need data types such as object, array, etc
+export type AggregateKey = keyof AggregateFunction;
+
 
 const length: QueryFunction = (data: JsonData, args?: LiteralNode[]): LiteralNode | QueryError => {
     // length(.name) for strings, numbers, or whatever really
     // we shouldn't do it like this
     if(args) {
-        let value = args[0];
+        let value = args[0]; // we want the first argument
         if(typeof value.value === "string") {
             return {
                 type: "Literal",

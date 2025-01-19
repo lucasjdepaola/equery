@@ -20,7 +20,8 @@ export interface FunctionNode extends BaseNode {
 
 export interface LiteralNode extends BaseNode {
     type: "Literal";
-    value: string | number | boolean;
+    value: string | number | boolean | LiteralNode[] | {[key: string]: LiteralNode};
+    // added different types for literal nodes, including arrays and objects
 }
 
 interface BinaryOpNode extends BaseNode {
