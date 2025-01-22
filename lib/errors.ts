@@ -44,6 +44,11 @@ export const errors: QueryError[] = [
         code: 6,
         message: "Cannot get length of datatype. Ensure the datatype is a string or array."
     },
+    {
+        error: "error",
+        code: 7,
+        message: "max() error, we can only accept properties that result in a number, like max(length(.name))"
+    },
 ]
 
 export const displayError = (e: QueryError) => {

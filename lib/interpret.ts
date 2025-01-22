@@ -8,8 +8,15 @@
 import { errors, QueryError } from "./errors";
 import { log } from "./global/console";
 import { JsonData, JsonObject, JsonValue } from "./jsoncraft";
-import { ExpressionNode, FunctionNode, LiteralNode, Operator, PropertyNode, QueryNode } from "./parse";
+import { ExpressionNode, FunctionNode, LiteralNode, LiteralType, Operator, PropertyNode, QueryNode } from "./parse";
 import { functions } from "./queryfunctions";
+
+export const literal = (value: LiteralType): LiteralNode => {
+    return {
+        type: "Literal",
+        value: value
+    }
+}
 
 // we can change it to another type of node that would account for some other values
 export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode | QueryError => {
@@ -65,10 +72,11 @@ export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode
         // would be a cache optimization
         try {
             const value = functions[fn.name](data, args); // perform the function
-            // TODO change functionsn into interface which return a literal value
-            value
+            console.log("VALUE IS " + value);
         } catch(e) {
             // return an error since the function does not exist
+            console.log("An error has occured calling the function");
+            console.log(e);
         }
     }
     return {

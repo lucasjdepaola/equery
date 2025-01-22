@@ -18,6 +18,8 @@ export interface FunctionNode extends BaseNode {
     arguments: ExpressionNode[];
 }
 
+export type LiteralType = string | number | boolean | LiteralNode[] | {[key: string]: LiteralNode};
+
 export interface LiteralNode extends BaseNode {
     type: "Literal";
     value: string | number | boolean | LiteralNode[] | {[key: string]: LiteralNode};

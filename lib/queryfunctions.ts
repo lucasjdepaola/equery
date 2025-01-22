@@ -3,8 +3,9 @@
 // count(.any) orderby(.any, desc|asc)
 
 import { errors, QueryError } from "./errors";
+import { interpretExpression, literal } from "./interpret";
 import { JsonData } from "./jsoncraft";
-import { FunctionNode, LiteralNode } from "./parse";
+import { ExpressionNode, FunctionNode, LiteralNode } from "./parse";
 
 interface Functions {
     max: AggregateFunction;
@@ -37,38 +38,55 @@ type QueryFunction = (data: JsonData, args?: LiteralNode[]) => LiteralNode | Que
 // so far, we only need a single instance of data for the query function
 // we want literal nodes to also contain array or object values
 
-type AggregateFunction = (data: JsonData[], arg: FunctionNode | LiteralNode) => LiteralNode | QueryError; // change to proper aggregate pattern
+type AggregateFunction = (data: JsonData[], arg: ExpressionNode) => LiteralNode | QueryError; // change to proper aggregate pattern
 // for aggregates, we need the data array to determine it
 const isAggregate = (fn: QueryFunction | AggregateFunction) => "length" in fn.arguments[0];
+
+const dataToNumber = (data: JsonData[], arg: ExpressionNode): number[] => {
+    const values: LiteralNode[] = data.map((d) => interpretExpression(arg, d)).filter(d => !("error" in d)) as LiteralNode[];
+    if(values.some((v) => typeof v.value !== "number")) {
+        // return errors[7];
+        throw new Error(JSON.stringify(errors[7]));
+    }
+    const strictValues = values.map(v => v.value) as number[];
+    return strictValues;
+}
 
 // the hardest case is max(length(.age))
 // max(length(today()))
 // move to functions/aggregate.ts
-const max = (values: number[]): number => {
-    return Math.max(...values);
+const max = (data: JsonData[], arg: ExpressionNode): LiteralNode | QueryError => {
+    const values = dataToNumber(data, arg);
+    return literal(Math.max(...values));
+} // this is how aggregate functions should look
+
+const min = (data: JsonData[], arg: ExpressionNode): LiteralNode | QueryError => {
+    const values = dataToNumber(data, arg);
+    return literal(Math.min(...values));
 }
 
-const min = (values: number[]): number => {
-    return Math.min(...values)
+const average = (data: JsonData[], arg: ExpressionNode): LiteralNode => {
+    const len = data.length;
+    const values = dataToNumber(data, arg);
+    const sumof = sum(data, arg);
+    if(typeof sumof.value !== "number") {
+        throw new Error("bad type");
+    }
+    return literal(sumof.value / len);
 }
 
-const average = (values: number[]): number => {
-    return sum(values) / values.length;
+const sum = (data: JsonData[], arg: ExpressionNode): LiteralNode => {
+    const values = dataToNumber(data, arg);
+    return literal(values.reduce((prev: number, current: number) => prev + current));
 }
 
-const sum = (values: number[]): number => {
-    return values.reduce((prev: number, current: number) => prev + current);
-}
-
-const count = (values: any[]): number => {
-    return values.length;
+const count = (data: JsonData[], arg: ExpressionNode): LiteralNode => {
+    return literal(data.length);
 }
 
 export const aggregateFunctions = {
-    max, min, average, sum, count
-} // this will do, we don't need regular functions, we can simply do ! in aggregate
-// might need to change the philosophy behind building functions, we need data types such as object, array, etc
-export type AggregateKey = keyof AggregateFunction;
+    max, min, average, sum, count // aggregate functions are tidy now
+} as const satisfies {[key: string]: AggregateFunction};
 
 
 const length: QueryFunction = (data: JsonData, args?: LiteralNode[]): LiteralNode | QueryError => {
@@ -100,17 +118,21 @@ const irank = () => {
     // inverse rank, for things that need lower value (like price being low)
 }
 
-const lowercase = (data: JsonData, value: LiteralNode): string | QueryError => {
+const lowercase = (data: JsonData, args?: LiteralNode[]): LiteralNode | QueryError => {
+    if(!args) throw new Error("lowercase needs arguments");
+    const value = args[0];
     if(typeof value.value === "string")
-        return value.value.toLowerCase();
-    return "";
+        return literal(value.value.toLowerCase());
+    throw new Error("cannot convert to lowercase, ensure that your argument 1 is a string")
 }
 
-const uppercase = (value: LiteralNode): string => {
+const uppercase = (data: JsonData, args?: LiteralNode[]): LiteralNode | QueryError => {
+    if(!args) throw new Error("lowercase needs arguments");
+    const value = args[0];
     if(typeof value.value === "string") {
-        return value.value.toUpperCase();
+        return literal(value.value.toUpperCase());
     }
-    return ""; // error change to
+    throw new Error("cannot convert to uppercase, ensure that arg1 contains a string");
 }
 
 const toUTC = (date: string): number => {
@@ -118,14 +140,19 @@ const toUTC = (date: string): number => {
 }
 
 // string functions
-export const contains = (expression: string, value: string) => {
-    const regex: RegExp = new RegExp(expression);
+export const contains = (data: JsonData, args?: LiteralNode[]): LiteralNode => {
+    if(!args) throw new Error("contains needs arguments");
+    // value, contains contains(.property, "string")
+    const [property, str] = args;
+    if(typeof property.value !== "string" && typeof str.value !== "string") {
+        throw new Error("wrong arguments in contains");
+    }
+    const regex: RegExp = new RegExp(str.value as string);
     // or could do string.includes(), etc
-    return regex.test(value);
+    return literal(regex.test(property.value as string));
 }
 // we could find a way to leverage the functions native to javascript
 // yearsfromdate(.number), senator is yearsfromdate(.birthdate) years old
-// .name: yearstoday(.birthday)
 // ft(.sizeinmm)
 
 // conversions
@@ -134,24 +161,11 @@ const ft = (inft: number) => {
 }
 
 // date lib
-// we go from the utc number, then we compare it to today's date and calculate the proper years.
 export const yearsfromdate = (utc: number): number => {
     const today: number = Date.now();
     const timeDifference: number= new Date(today - utc).getFullYear();
     return timeDifference; // we could change it to a regular date, however, a number seems more fitting.
 }
-// we also need proper conversions from date formats (say mm-dd-yyyy or yyyy-mm-dd)
-
-// TODO, move this to a date file
-
-// below are some statements that are equery compatible, to understand better some of the functions that involve date
-// orderby(years(.date))
-// valid statement: .date = years(today())
-// twitter allows for the best date queries, so it would be better to think in
-// twitter advanced terms
-// note: we only really need to use years() for simple functions, we don't always need it.
-// like this: years(.date) = years(today())
-
 const years = (utc: number) => {
     // return the number of years from a utc date which is a native integer
     return new Date(utc).getFullYear(); // this should return something like 2024/2023, etc
@@ -165,14 +179,6 @@ const ytoday = (): number => {
 }
 
 const parseDate = (date: string, fmt?: string): Date => {
-    // we can accept a formatting which would include mdy dmy, etc.
-    // without this, we would assume that the date would be mm-dd-yyyy
-    // valid formats of a user inputted date
-    // "02-26-2004"
-    // "02/26/2004"
-    // "02 26 2004"
-    // "2004 02 26"
-    // build regular expressions with the correct date
     if(date.includes("/")) {
         // slash case
         const numbers = date.split("/");
@@ -185,11 +191,12 @@ const parseDate = (date: string, fmt?: string): Date => {
     }
     return new Date();
 }
-export const functions: Functions | any = {
+export const functions = {
     min, max, sum, average, count, contains, // aggregate functions
     uppercase, lowercase, // string functions
     // number functions
-    ft, // metric conversions
-    toUTC, today, parseDate, years, yearsfromdate, ytoday, // date functions
+    // ft, // metric conversions
+    // toUTC, today, parseDate, years, yearsfromdate, ytoday, // date functions
+    // omit these for now since we haven't even implemented them
     length // multi datatype functions
-}
+} as const satisfies {[key: string]: QueryFunction | AggregateFunction}
