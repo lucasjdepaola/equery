@@ -14,6 +14,10 @@ export const log = (...param: any[]) => {
     }
 }
 
+export const printJson = (obj: any) => {
+    console.log(JSON.stringify(obj, null, 2));
+}
+
 const zip = <T extends readonly unknown[][]>(...arrays: [...T]): Array<Array<T[number][number]>> => {
     /* result is an array of tuples */
     const result: Array<Array<T[number][number]>> = [];

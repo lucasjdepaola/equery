@@ -6,7 +6,7 @@
 */
 
 import { errors, QueryError } from "./errors";
-import { log } from "./global/console";
+import { log, printJson } from "./global/console";
 import { JsonData, JsonObject, JsonValue } from "./jsoncraft";
 import { ExpressionNode, FunctionNode, LiteralNode, LiteralType, Operator, PropertyNode, QueryNode } from "./parse";
 import { functions, FunctionWrapper, QueryFunction } from "./queryfunctions";
@@ -64,7 +64,6 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue): LiteralNod
         return error;
     }
     if(fn.name in functions) { // these are the lists of functions
-        console.log(" we can perform the function "); // change though
         // perhaps precalculate all aggregates that are used before performing loop
         // would be a cache optimization
         try {
@@ -72,8 +71,9 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue): LiteralNod
             if(type === "query") {
                 if(args.some(a => "error" in a)) throw new Error("err");
                 const value = (func as QueryFunction)(data, args as LiteralNode[]); // perform the function
-                console.log("VALUE IS " + value);
-                console.log("we've called a function");
+                console.log("we called function: " + fn.name + " and got a valid result");
+                printJson(value);
+                return value;
             } else {
                 // aggregate, so pick from the already cached list
             }
@@ -92,31 +92,29 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue): LiteralNod
 const findPropertyValue = (propertyPath: PropertyNode, data: JsonValue): JsonValue => {
     // change to findproperty().value below
     const property = findProperty(propertyPath, data);
-    console.log("property is " + JSON.stringify(property));
     return property;
 }
 
 const findProperty = (path: PropertyNode, data: JsonValue): JsonValue => {
-    let value: JsonValue = data;
+    let value: JsonValue | undefined = data;
     for(const propertyName of path.path) {
-        if(data.type === "object" && data.value) {
-            if(value && value.value) {
-                // value = data.value[propertyName] 
-                value = value.value[propertyName];
+        if(data.type === "object" && data.value !== undefined) {
+            if(value !== undefined && value.value !== undefined && value.type === "object") {
+                value = value.value.find(v => v.name === propertyName)?.property;
+                if(value === undefined) throw new Error("no");
             } else {
-                // don't return that, return false if you can't find it
                 log("We cannot find the property, defaulting to false");
                 return {
-                        type: "boolean",
-                        value: false
+                    type: "boolean",
+                    value: false
                 }
             }
         }
     }
-    if(value) {
-        log("We have found the property (temp)");
+    if(value && value.value !== undefined) {
         return value;
     }
+    // return false when we know this function is correct.
     throw new Error(errors[1].message);
 }
 
@@ -186,9 +184,6 @@ export const interpretExpression = (expression: ExpressionNode, data: JsonValue)
     if(expression.type === "BinaryOp") {
         const left = interpretExpression(expression.left, data); // might be inefficient to ref a lot
         const right = interpretExpression(expression.right, data);
-        console.log(left);
-        console.log(right);
-        console.log("left, right");
         if("error" in left || "error" in right) {
             return errors[3];
         }
@@ -201,22 +196,20 @@ export const interpretExpression = (expression: ExpressionNode, data: JsonValue)
     else if(expression.type === "Property") {
         // complicated, because we need to leave it nonaggregated before traversing
         const property: JsonValue = findPropertyValue(expression, data);
-        console.log("Data");
-        console.log(data);
-        console.log(property)
-        console.log("before error");
         if(property.type !== "object" && property.type !== "array") {
             return {
                 type: "Literal",
                 value: property.value
             };
         }
+        throw new Error(property.type)
     }
     else if(expression.type === "Literal") {
         return expression;
     }
 
     // throw error here
+    throw new Error("this should not happen." + JSON.stringify(expression));
     return {
         type: "Literal",
         value: -1
@@ -231,13 +224,10 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
         const conditions = ast.conditions;
         data = data.filter((value: JsonValue) => {
             const answer = interpretExpression(conditions, value);
-            console.log("stringified answer of the condition phase is " + JSON.stringify(answer));
-            console.log("NOTE: this is within a data context");
             if("error" in answer) {
                 console.log("error");
             }
             else if(answer.value === true) {
-                console.log("We've returned true");
                 return true;
             }
             return false; // this is naive, needs more thorough reasoning

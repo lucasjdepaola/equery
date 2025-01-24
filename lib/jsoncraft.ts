@@ -104,10 +104,11 @@ export const objtojsondata = (obj: {}, title: string): JsonData => {
             }
         }
         else if(Array.isArray(value)) {
-            console.log("this should be called an array then");
+            // this is an any type
             return {
                 type: "array",
-                value
+                value: value.map(v => getKeyValue(v, key)!)
+                // value
             }
         }
         else if(typeof value === "object") {
@@ -118,7 +119,7 @@ export const objtojsondata = (obj: {}, title: string): JsonData => {
                 type: "object"
             }
         }
-        return undefined;
+        throw new Error("Bad type");
     }
     if(Array.isArray(obj)) {
         return {
