@@ -9,7 +9,7 @@ import { errors, QueryError } from "./errors";
 import { log } from "./global/console";
 import { JsonData, JsonObject, JsonValue } from "./jsoncraft";
 import { ExpressionNode, FunctionNode, LiteralNode, LiteralType, Operator, PropertyNode, QueryNode } from "./parse";
-import { functions } from "./queryfunctions";
+import { functions, FunctionWrapper, QueryFunction } from "./queryfunctions";
 
 export const literal = (value: LiteralType): LiteralNode => {
     return {
@@ -19,7 +19,7 @@ export const literal = (value: LiteralType): LiteralNode => {
 }
 
 // we can change it to another type of node that would account for some other values
-export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode | QueryError => {
+export const interpretFunction = (fn: FunctionNode, data: JsonValue): LiteralNode | QueryError => {
     const args: (LiteralNode | QueryError)[] = fn.arguments.map((expression: ExpressionNode) => {
         // we need interpretExpression as well
         /// we should handle the expression with interpretexpression()
@@ -36,9 +36,6 @@ export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode
         else if(expression.type === "Property") {
             // handle property
             const value = findPropertyValue(expression, data);
-            if("error" in value) {
-                return value;
-            }
             if(value.type === "array" || value.type === "object") {
                 // we cannot do this
                 throw new Error("cannot perform expressions on arrays or objects");
@@ -71,8 +68,15 @@ export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode
         // perhaps precalculate all aggregates that are used before performing loop
         // would be a cache optimization
         try {
-            const value = functions[fn.name](data, args); // perform the function
-            console.log("VALUE IS " + value);
+            const [func, type] = functions[fn.name] as FunctionWrapper;
+            if(type === "query") {
+                if(args.some(a => "error" in a)) throw new Error("err");
+                const value = (func as QueryFunction)(data, args as LiteralNode[]); // perform the function
+                console.log("VALUE IS " + value);
+                console.log("we've called a function");
+            } else {
+                // aggregate, so pick from the already cached list
+            }
         } catch(e) {
             // return an error since the function does not exist
             console.log("An error has occured calling the function");
@@ -81,58 +85,30 @@ export const interpretFunction = (fn: FunctionNode, data: JsonData): LiteralNode
     }
     return {
         type: "Literal",
-        value: 1
+        value: 1 // change this
     }
 }
 
-const findPropertyValue = (propertyPath: PropertyNode, data: JsonData): JsonValue|QueryError => {
+const findPropertyValue = (propertyPath: PropertyNode, data: JsonValue): JsonValue => {
     // change to findproperty().value below
-    // const property = findProperty(propertyPath, data);
-    // we dont need the rest
-    let value: JsonValue | undefined = data.property;
-    for(const propertyName of propertyPath.path) {
-        if(data.property.type === "object" && data.property.value) {
-            if(value && value.value) {
-                // value = value.value[propertyName];
-                value = data.property.value.find((d) => d.name === propertyName)?.property;
-                console.log("We've found the path specified");
-            } else {
-                log("WE cannot find the property specified");
-                return {
-                    type: "boolean", // we return false if we cannot find a property, no need for more than that
-                    value: false
-                }
-            }
-        }
-    }
-    if(value) {
-        return value;
-    }
-    log("Cannot find the property specified");
-    return {
-        type: "boolean", // we return false if we cannot find a property, no need for more than that
-        value: false
-    }
+    const property = findProperty(propertyPath, data);
+    console.log("property is " + JSON.stringify(property));
+    return property;
 }
 
-const findProperty = (path: PropertyNode, data: JsonData): JsonData | QueryError => {
-    let value: JsonData = data;
+const findProperty = (path: PropertyNode, data: JsonValue): JsonValue => {
+    let value: JsonValue = data;
     for(const propertyName of path.path) {
-        if(data.property.type === "object" && data.property.value) {
-            if(value.property) {
-                value = {
-                    name: data.property.name,
-                    property: data.property.value[propertyName]
-                }
+        if(data.type === "object" && data.value) {
+            if(value && value.value) {
+                // value = data.value[propertyName] 
+                value = value.value[propertyName];
             } else {
                 // don't return that, return false if you can't find it
                 log("We cannot find the property, defaulting to false");
                 return {
-                    "name": "undefined",
-                    property: {
                         type: "boolean",
                         value: false
-                    }
                 }
             }
         }
@@ -141,7 +117,7 @@ const findProperty = (path: PropertyNode, data: JsonData): JsonData | QueryError
         log("We have found the property (temp)");
         return value;
     }
-    return errors[1];
+    throw new Error(errors[1].message);
 }
 
 export type NativeType = "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function";
@@ -204,7 +180,7 @@ export const groupBy = (arr: any[], key: any) =>{
     ), {});
 }
 
-export const interpretExpression = (expression: ExpressionNode, data: JsonData):LiteralNode | QueryError => {
+export const interpretExpression = (expression: ExpressionNode, data: JsonValue):LiteralNode | QueryError => {
     // expressions 
     // expressions are a superset to regular function() interpretation, yet, a function() can contain an expression.
     if(expression.type === "BinaryOp") {
@@ -224,9 +200,12 @@ export const interpretExpression = (expression: ExpressionNode, data: JsonData):
     }
     else if(expression.type === "Property") {
         // complicated, because we need to leave it nonaggregated before traversing
-        const property: JsonValue | QueryError = findPropertyValue(expression, data);
-        if("error" in property) {
-        } else if(property.type !== "object" && property.type !== "array") {
+        const property: JsonValue = findPropertyValue(expression, data);
+        console.log("Data");
+        console.log(data);
+        console.log(property)
+        console.log("before error");
+        if(property.type !== "object" && property.type !== "array") {
             return {
                 type: "Literal",
                 value: property.value
@@ -237,18 +216,20 @@ export const interpretExpression = (expression: ExpressionNode, data: JsonData):
         return expression;
     }
 
+    // throw error here
     return {
         type: "Literal",
         value: -1
     }
 }
 
-export const interpret = (ast: QueryNode, data: JsonData[]): JsonData[] | QueryError | void => {
+export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | QueryError | void => {
+    console.log("STARTING THE INTERPRETER --------");
     // condition -> order/sort -> scope
     // so basically, map() -> filter() -> sort(), but we do it in lossless order
     if(ast.conditions) {
         const conditions = ast.conditions;
-        data = data.filter((value: JsonData) => {
+        data = data.filter((value: JsonValue) => {
             const answer = interpretExpression(conditions, value);
             console.log("stringified answer of the condition phase is " + JSON.stringify(answer));
             console.log("NOTE: this is within a data context");
@@ -271,7 +252,7 @@ export const interpret = (ast: QueryNode, data: JsonData[]): JsonData[] | QueryE
         if(orderby) {
             // we can just extract the expressions and see
             // its not a real function
-            data = data.sort((a: JsonData, b: JsonData) => {
+            data = data.sort((a: JsonValue, b: JsonValue) => {
                 const one = interpretFunction(orderby, a);
                 // change to a simple getproperty
                 const two = interpretFunction(orderby, b);
@@ -310,9 +291,9 @@ export const interpret = (ast: QueryNode, data: JsonData[]): JsonData[] | QueryE
     const properties: PropertyNode[] = [];
     if(ast.scope) {
         const scope = ast.scope;
-        data = data.map((value: JsonData) => {
+        data = data.map((value: JsonValue) => {
             const values: JsonObject = {
-                name: "changeme",
+                name: "",
                 value: [],
                 type: "object"
             }
@@ -322,33 +303,25 @@ export const interpret = (ast: QueryNode, data: JsonData[]): JsonData[] | QueryE
                     properties.push(e);
                     const property = findProperty(e, value);
                     if(!("error" in property)) {
-                        // values[e.path[0]] = property;
                         values.value.push({
-                            name: property.name,
-                            property: property.property,
+                            name: "foo",
+                            property: property,
                         })
                         // not fully proper scope, only shallow
                     }
                     // find the proper scope
                 }
                 else if(e.type === "Literal") {
-                    // this is an error case, throw an error
                     throw new Error("Cannot use literal values in scope phase");
                 }
                 else if(e.type === "Function") {
                     // this is a more advanced usecase, for things like aggregate,
-                    // i.e: max(.age): conds
-                    // do or don't implement.
                     throw new Error("Cannot use functions in the scope phase for now.");
                 }
             });
-            return {
-                name: "foo",
-                property: values // change to incorporate this into data instead of early return
-            }
+            return values;
         })
         // recursive filter properties that only include certain names involved in the scope relative to their level
     }
-    // else if()
     return data; // return the data
 }

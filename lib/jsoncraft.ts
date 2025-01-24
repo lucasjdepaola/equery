@@ -78,63 +78,70 @@ export const jsontoobjdata = (data: JsonData): {} => {
     // else, we need to handle it differently
 }
 
-export const objtojsondata = (obj: {}, title: string): JsonData | undefined => {
-    const getKeyValue = (value: any, key: string): JsonData | undefined => {
+export const objtojsondataarr = (obj: {}[], title: string): JsonData[] => {
+    return obj.map(d => objtojsondata(d, title)); // pseudo wrapper, not perfect.
+}
+
+export const objtojsondata = (obj: {}, title: string): JsonData => {
+    const getKeyValue = (value: any, key: string): JsonValue | undefined => {
         if(typeof value === "boolean") {
             // todo fix
             return {
-                name: key,
-                property: {
-                    type: "boolean",
-                    value
-                }
+                type: "boolean",
+                value
             }
         }
         else if(typeof value === "number") {
             return {
-                name: key,
-                property: {
-                    type: "number",
-                    value
-                }
+                type: "number",
+                value
             }
         }
         else if(typeof value === "string") {
             return {
-                name: key,
-                property: {
-                    type: "string",
-                    value
-                }
+                type: "string",
+                value
             }
         }
         else if(Array.isArray(value)) {
+            console.log("this should be called an array then");
             return {
-                name: key,
-                property: {
-                    type: "array",
-                    value
-                }
+                type: "array",
+                value
             }
         }
         else if(typeof value === "object") {
             // we do this recursively
-            return objtojsondata(value, key);
+            return {
+                name: key,
+                value: objtojsondata(value, key).property.value as JsonData[],
+                type: "object"
+            }
         }
         return undefined;
     }
-    const data: JsonData[] = []
-    for(const key in obj) {
-        const value = obj[key];
-        const v = getKeyValue(value, key);
-        v && data.push(v);
-    }
-    return {
-        name: title,
-        property: {
+    if(Array.isArray(obj)) {
+        return {
             name: title,
-            type: "object",
-            value: data
+            property: getKeyValue(obj, title)!
+        }
+    } else {
+        const data: JsonData[] = []
+        for(const key in obj) {
+            const value = obj[key];
+            const v: JsonData = {
+                name: key,
+                property: getKeyValue(value, key)!
+            }
+            v && data.push(v);
+        }
+        return {
+            name: title,
+            property: {
+                name: title,
+                type: "object",
+                value: data
+            }
         }
     }
 }

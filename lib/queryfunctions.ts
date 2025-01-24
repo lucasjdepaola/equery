@@ -4,45 +4,20 @@
 
 import { errors, QueryError } from "./errors";
 import { interpretExpression, literal } from "./interpret";
-import { JsonData } from "./jsoncraft";
+import { JsonData, JsonValue } from "./jsoncraft";
 import { ExpressionNode, FunctionNode, LiteralNode } from "./parse";
 
-interface Functions {
-    max: AggregateFunction;
-    min: AggregateFunction;
-    average: AggregateFunction;
-    sum: AggregateFunction;
-    count: AggregateFunction;
-    contains: AggregateFunction;
-    lowercase: QueryFunction;
-    uppercase: QueryFunction;
-    ft: QueryFunction;
-    toUTC: QueryFunction;
-    today: QueryFunction;
-    parseDate: QueryFunction;
-    years: QueryFunction;
-    yearsfromdate: QueryFunction;
-    ytoday: QueryFunction;
-    length: QueryFunction;
-}
-/* how we'd do it is:
-if(fn.name in functions) {
-const nativefn = functions[fn.name];
-if(nativefn.type === "aggregate") {
-// handle differently and cache answer
-}
-}
-*/
-
-type QueryFunction = (data: JsonData, args?: LiteralNode[]) => LiteralNode | QueryError;
+export type QueryFunction = (data: JsonValue, args?: LiteralNode[]) => LiteralNode | QueryError;
 // so far, we only need a single instance of data for the query function
 // we want literal nodes to also contain array or object values
 
-type AggregateFunction = (data: JsonData[], arg: ExpressionNode) => LiteralNode | QueryError; // change to proper aggregate pattern
+export type AggregateFunction = (data: JsonValue[], arg: ExpressionNode) => LiteralNode | QueryError; // change to proper aggregate pattern
+
+export type FunctionWrapper = [QueryFunction | AggregateFunction, "aggregate" | "query"];
 // for aggregates, we need the data array to determine it
 const isAggregate = (fn: QueryFunction | AggregateFunction) => "length" in fn.arguments[0];
 
-const dataToNumber = (data: JsonData[], arg: ExpressionNode): number[] => {
+const dataToNumber = (data: JsonValue[], arg: ExpressionNode): number[] => {
     const values: LiteralNode[] = data.map((d) => interpretExpression(arg, d)).filter(d => !("error" in d)) as LiteralNode[];
     if(values.some((v) => typeof v.value !== "number")) {
         // return errors[7];
@@ -52,20 +27,17 @@ const dataToNumber = (data: JsonData[], arg: ExpressionNode): number[] => {
     return strictValues;
 }
 
-// the hardest case is max(length(.age))
-// max(length(today()))
-// move to functions/aggregate.ts
-const max = (data: JsonData[], arg: ExpressionNode): LiteralNode | QueryError => {
+const max = (data: JsonValue[], arg: ExpressionNode): LiteralNode | QueryError => {
     const values = dataToNumber(data, arg);
     return literal(Math.max(...values));
 } // this is how aggregate functions should look
 
-const min = (data: JsonData[], arg: ExpressionNode): LiteralNode | QueryError => {
+const min = (data: JsonValue[], arg: ExpressionNode): LiteralNode | QueryError => {
     const values = dataToNumber(data, arg);
     return literal(Math.min(...values));
 }
 
-const average = (data: JsonData[], arg: ExpressionNode): LiteralNode => {
+const average = (data: JsonValue[], arg: ExpressionNode): LiteralNode => {
     const len = data.length;
     const values = dataToNumber(data, arg);
     const sumof = sum(data, arg);
@@ -75,12 +47,25 @@ const average = (data: JsonData[], arg: ExpressionNode): LiteralNode => {
     return literal(sumof.value / len);
 }
 
-const sum = (data: JsonData[], arg: ExpressionNode): LiteralNode => {
+const sum = (data: JsonValue[], arg: ExpressionNode): LiteralNode => {
     const values = dataToNumber(data, arg);
     return literal(values.reduce((prev: number, current: number) => prev + current));
 }
 
-const count = (data: JsonData[], arg: ExpressionNode): LiteralNode => {
+const count = (data: JsonValue[], args?: ExpressionNode): LiteralNode => {
+    // two cases, count() -> data length, count(.property) -> times property appears
+    if(args) {
+        // hmm, this turns into an aggregate doesn't it. maybe we'll hold off.
+        let count = 0;
+        for(const insertion of data) {
+            const answer = interpretExpression(args, insertion);
+            if(!("error" in answer) && typeof answer.value !== "undefined") {
+                // means we have something
+                count++;
+            }
+        }
+        return literal(count);
+    }
     return literal(data.length);
 }
 
@@ -89,7 +74,7 @@ export const aggregateFunctions = {
 } as const satisfies {[key: string]: AggregateFunction};
 
 
-const length: QueryFunction = (data: JsonData, args?: LiteralNode[]): LiteralNode | QueryError => {
+const length: QueryFunction = (data: JsonValue, args?: LiteralNode[]): LiteralNode | QueryError => {
     // length(.name) for strings, numbers, or whatever really
     // we shouldn't do it like this
     if(args) {
@@ -118,15 +103,16 @@ const irank = () => {
     // inverse rank, for things that need lower value (like price being low)
 }
 
-const lowercase = (data: JsonData, args?: LiteralNode[]): LiteralNode | QueryError => {
+const lowercase = (data: JsonValue, args?: LiteralNode[]): LiteralNode | QueryError => {
     if(!args) throw new Error("lowercase needs arguments");
     const value = args[0];
+    console.log(value.value + " is the value");
     if(typeof value.value === "string")
         return literal(value.value.toLowerCase());
     throw new Error("cannot convert to lowercase, ensure that your argument 1 is a string")
 }
 
-const uppercase = (data: JsonData, args?: LiteralNode[]): LiteralNode | QueryError => {
+const uppercase = (data: JsonValue, args?: LiteralNode[]): LiteralNode | QueryError => {
     if(!args) throw new Error("lowercase needs arguments");
     const value = args[0];
     if(typeof value.value === "string") {
@@ -140,7 +126,7 @@ const toUTC = (date: string): number => {
 }
 
 // string functions
-export const contains = (data: JsonData, args?: LiteralNode[]): LiteralNode => {
+export const contains = (data: JsonValue, args?: LiteralNode[]): LiteralNode => {
     if(!args) throw new Error("contains needs arguments");
     // value, contains contains(.property, "string")
     const [property, str] = args;
@@ -192,11 +178,19 @@ const parseDate = (date: string, fmt?: string): Date => {
     return new Date();
 }
 export const functions = {
-    min, max, sum, average, count, contains, // aggregate functions
-    uppercase, lowercase, // string functions
+    min: [min, "aggregate"],
+    max: [max, "aggregate"],
+    sum: [sum, "aggregate"],
+    average: [average, "aggregate"],
+    count: [count, "aggregate"],
+    contains: [contains, "aggregate"], // aggregates
+
+    uppercase: [uppercase, "query"],
+    lowercase: [lowercase, "query"], // string functions
     // number functions
     // ft, // metric conversions
     // toUTC, today, parseDate, years, yearsfromdate, ytoday, // date functions
     // omit these for now since we haven't even implemented them
-    length // multi datatype functions
-} as const satisfies {[key: string]: QueryFunction | AggregateFunction}
+
+    length: [length, "query"] // multi datatype functions
+} as const satisfies {[key: string]: FunctionWrapper}

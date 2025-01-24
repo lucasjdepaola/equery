@@ -98,7 +98,7 @@ const examplePerson: Person[] | {}[] = [
 
 // we want some sort of way to auto complete things like this for the user experience
 // just make the value : JSON and type it, we don't have to build a json parser for this
-export const tweetdata: Tweet[] | {}[] = [
+export const tweetdata: Tweet[] = [
     { // we'd use the auto generated interface for this
         username: "lucas",
         likes: 10,
