@@ -1,6 +1,6 @@
 import { JsonData, JsonSchematic, TypedJson } from "../jsoncraft"
 import data from "../datasets/tidy.json"
-
+import tweets from "../datasets/tweet2.json"
 
 const tweetschema: JsonSchematic = {
     title: "tweet",
@@ -47,17 +47,6 @@ const tweetschema: JsonSchematic = {
         },
     ]
 }
-// @Tweet {
-//     username: string;
-//     user: @User;
-//     likes: number;
-//     retweets: number;
-//     replies: @Tweet[];
-//     date: number; // or string, or whatever, perhaps not a string for real queries
-//     text: string; // tweet text
-//     image?: string; // link to image
-//     video?: string; // link to video
-//   }
 
 const userschema: JsonSchematic = {
     title: "user",
@@ -81,51 +70,8 @@ interface Tweet {
     video?: string;
 }
 
-interface Person {
-    name: string;
-    age: number;
-    isMarried: boolean;
-    spouse?: Person;
-    birthday?: number; // utc, or you could do it as a string, either way
-}
-
-const examplePerson: Person[] | {}[] = [
-    {
-        name: "mark",
-        age: 500,
-        isMarried: true,
-        birthday: new Date("10-10-2000")
-    }
-]
-
 // we want some sort of way to auto complete things like this for the user experience
 // just make the value : JSON and type it, we don't have to build a json parser for this
-export const tweetdataf: Tweet[] = [
-    { // we'd use the auto generated interface for this
-        username: "lucas",
-        likes: 10,
-        retweets: 10,
-        date: new Date("1996-06-06").getUTCDate(),
-        replies: [],
-        text: "this is a test tweet",
-    },
-    {
-        username: "lucas",
-        likes: 20,
-        retweets: 10,
-        date: new Date("1996-06-06").getUTCDate(),
-        replies: [],
-        text: "hello world",
-    },
-    {
-        username: "electroencephalograph",
-        likes: 40,
-        retweets: 5,
-        date: new Date("1996-06-06").getUTCDate(),
-        replies: [],
-        text: "this is a test message",
-    },
-]
 
 interface ScrapedTweet {
     id: number;
@@ -135,10 +81,15 @@ interface ScrapedTweet {
     source: string;
     created_at: string;
 }
-export const tweetdata: ScrapedTweet[] = data;
 
+interface TweetDataset {
+    Tweet_ID: number;
+    Username: string;
+    Text: string;
+    Retweets: number;
+    Likes: number;
+    Timestamp: string;
+}
 
-// export const tweetExamples: TypedJson = {
-//     type: userschema,
-//     // data: data
-// }
+// export const tweetdata: ScrapedTweet[] = data;
+export const tweetdata: TweetDataset[] = tweets;

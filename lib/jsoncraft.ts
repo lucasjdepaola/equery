@@ -65,70 +65,6 @@ export const objtojsondataarr = (obj: {}[], title: string): JsonData[] => {
     return obj.map(d => objtojsondata(d, title)); // pseudo wrapper, not perfect.
 }
 
-export const objtojsondata = (obj: {}, title: string): JsonData => {
-    const getKeyValue = (value: any, key: string): JsonValue | undefined => {
-        if(typeof value === "boolean") {
-            // todo fix
-            return {
-                type: "boolean",
-                value
-            }
-        }
-        else if(typeof value === "number") {
-            return {
-                type: "number",
-                value
-            }
-        }
-        else if(typeof value === "string") {
-            return {
-                type: "string",
-                value
-            }
-        }
-        else if(Array.isArray(value)) {
-            // this is an any type
-            return {
-                type: "array",
-                value: value.map(v => getKeyValue(v, key)!)
-                // value
-            }
-        }
-        else if(typeof value === "object") {
-            // we do this recursively
-            return {
-                name: key,
-                value: objtojsondata(value, key).property.value as JsonData[],
-                type: "object"
-            }
-        }
-        throw new Error("Bad type");
-    }
-    if(Array.isArray(obj)) {
-        return {
-            name: title,
-            property: getKeyValue(obj, title)!
-        }
-    } else {
-        const data: JsonData[] = []
-        for(const key in obj) {
-            const value = obj[key];
-            const v: JsonData = {
-                name: key,
-                property: getKeyValue(value, key)!
-            }
-            v && data.push(v);
-        }
-        return {
-            name: title,
-            property: {
-                name: title,
-                type: "object",
-                value: data
-            }
-        }
-    }
-}
 
 const getType = (value: any): TypeAbstract => {
     let type = getJsonType(value);
@@ -215,28 +151,90 @@ export const transformValueToNativeJson = (v: JsonValue): [Key, Val] => {
     return ["one", "one"];
 }
 
-export const jsondatatoobj = (v: JsonData): {} => {
-    const getKeyValue = (prop: JsonValue, name: string): {} => {
-        if(prop.type === "string") {
-            return {[name]: prop.value};
-        }
-        else if(prop.type === "number") {
-            return {[name]: prop.value};
-        }
-        else if(prop.type === "boolean") {
-            return {[name]: prop.value};
-        }
-        else if(prop.type === "array") {
-            return {[name]: prop.value};
-        }
-        else if(prop.type === "object") {
-            // go one layer deeper
-            return { // not right
-                [prop.name]: prop.value.map(data => jsondatatoobj(data))
+export const objtojsondata = (obj: {}, title: string): JsonData => {
+    const getKeyValue = (value: any, key: string): JsonValue | undefined => {
+        if(typeof value === "boolean") {
+            return {
+                type: "boolean",
+                value
             }
         }
-        return {};
+        else if(typeof value === "number") {
+            return {
+                type: "number",
+                value
+            }
+        }
+        else if(typeof value === "string") {
+            return {
+                type: "string",
+                value
+            }
+        }
+        else if(Array.isArray(value)) {
+            // this is an any type
+            return {
+                type: "array",
+                value: value.map(v => getKeyValue(v, key)!)
+                // value
+            }
+        }
+        else if(typeof value === "object") {
+            // we do this recursively
+            return {
+                name: key,
+                value: objtojsondata(value, key).property.value as JsonData[],
+                type: "object"
+            }
+        }
+        throw new Error("Bad type");
     }
-    // you can return either an array or a regular object
-    return {};
+    if(Array.isArray(obj)) {
+        return {
+            name: title,
+            property: getKeyValue(obj, title)!
+        }
+    } else {
+        const data: JsonData[] = []
+        for(const key in obj) {
+            const value = obj[key];
+            const v: JsonData = {
+                name: key,
+                property: getKeyValue(value, key)!
+            }
+            v && data.push(v);
+        }
+        return {
+            name: title,
+            property: {
+                name: title,
+                type: "object",
+                value: data
+            }
+        }
+    }
 }
+
+export const jsondatatoobj = (v: JsonData): any => {
+    const getValue = (prop: JsonValue): any => {
+        switch (prop.type) {
+            case "string":
+            case "number":
+            case "boolean":
+                return prop.value;
+            case "array":
+                return prop.value.map(item => getValue(item));
+            case "object": {
+                const obj: { [key: string]: any } = {};
+                for (const data of prop.value) {
+                    obj[data.name] = getValue(data.property);
+                }
+                return obj;
+            }
+            default:
+                throw new Error("Unexpected JsonValue type");
+        }
+    };
+
+    return getValue(v.property);
+};

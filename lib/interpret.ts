@@ -292,7 +292,8 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
                 return 0;
             });
         }
-        if(ordering.limit) {
+        if(ordering.limit !== undefined) {
+            // this might not be trimmed right
             data = data.slice(0, ordering.limit);
         }
     }

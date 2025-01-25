@@ -265,8 +265,8 @@ export const parse = (tokens: Token[]): QueryNode | void => {
             orderby.function = functionNode;
         }
         if(limit) {
-            const limitNode = parseFunction(limit);
-            const number = parseInt(limit.value.slice(limit.value.indexOf("("), limit.value.lastIndexOf(")")));
+            const limitRaw = limit.value.slice(limit.value.indexOf("(") + 1, limit.value.lastIndexOf(")"));
+            const number = parseInt(limitRaw);
             orderby.limit = number;
             // resolve here (we need to extract inside paren)
         }

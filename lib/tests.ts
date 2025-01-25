@@ -3,15 +3,11 @@
 import { tweetdata } from "./data/testjson";
 import { log, printJson } from "./global/console";
 import { interpret } from "./interpret";
-import { JsonData, JsonSchematic, JsonValue, objtojsondata, objtojsondataarr } from "./jsoncraft";
+import { JsonData, jsondatatoobj, JsonSchematic, JsonValue, objtojsondata, objtojsondataarr } from "./jsoncraft";
 import { lex, Token } from "./lex";
 import { parse } from "./parse";
 
-// const data = tweetdata.map(d => objtojsondata(d, "tweet")); // isn't quite correct either, close though
 const data: JsonData = objtojsondata(tweetdata, "tweet");
-// console.log("DATA");
-// console.log(data);
-// clear up ambiguity
 
 const tests = (line: string) => {
     const tokens = lex(line);
@@ -22,13 +18,13 @@ const tests = (line: string) => {
         const dt = interpret(query, data.property.value); // we need to figure this out.
         if(dt && !("error" in dt)) {
             console.log("RESULT -+++++++")
-            printJson(dt);
+            printJson(jsondatatoobj({name: "title", property: {type: "array", value: dt}}));
             console.log("+++++++");
             console.log(`result length: ${dt.length}`);
         }
     } else {
         console.log("interpreting failed, ");
-            console.log(data.property.value);
+        console.log(data.property.value);
     }
 }
 
@@ -59,14 +55,12 @@ export const query = (statement: string, data: JsonValue[], schema?: JsonSchemat
 // tests('.username: .username = "lucas" ~ orderby(.age) desc')
 // tests('.username = "lucas" ~ orderby(.likes) asc')
 // tests('.username, .likes: .likes < max(.likes)')
-tests('.name, .text: length(.text) > 100 ~ orderby(length(.text)) desc')
-    // id: number;
-    // lang: string;
-    // text: string;
-    // name: string;
-    // source: string;
-    // created_at: string;
-// groupby should come before orderby if anything
-// lets work on aggregates now
 
-// and we can only build functions that conform to our strict function's type
+// tests('.name, .text: length(.text) > 100 ~ orderby(length(.text)) desc')
+tests('.Username, .Text, .Likes: length(.Username) < 4 ~ orderby(.Likes) desc limit(10)')
+    // Tweet_ID: number;
+    // Username: string;
+    // Text: string;
+    // Retweets: number;
+    // Likes: number;
+    // Timestamp: string;
