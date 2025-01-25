@@ -18,7 +18,7 @@ export type FunctionWrapper = [QueryFunction | AggregateFunction, "aggregate" | 
 const isAggregate = (fn: QueryFunction | AggregateFunction) => "length" in fn.arguments[0];
 
 const dataToNumber = (data: JsonValue[], arg: ExpressionNode): number[] => {
-    const values: LiteralNode[] = data.map((d) => interpretExpression(arg, d)).filter(d => !("error" in d)) as LiteralNode[];
+    const values: LiteralNode[] = data.map((d) => interpretExpression(arg, d, data)).filter(d => !("error" in d)) as LiteralNode[];
     if(values.some((v) => typeof v.value !== "number")) {
         // return errors[7];
         throw new Error(JSON.stringify(errors[7]));
@@ -58,7 +58,7 @@ const count = (data: JsonValue[], args?: ExpressionNode): LiteralNode => {
         // hmm, this turns into an aggregate doesn't it. maybe we'll hold off.
         let count = 0;
         for(const insertion of data) {
-            const answer = interpretExpression(args, insertion);
+            const answer = interpretExpression(args, insertion, data);
             if(!("error" in answer) && typeof answer.value !== "undefined") {
                 // means we have something
                 count++;

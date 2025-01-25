@@ -61,23 +61,6 @@ export const isInsertionValid = (insertion: JsonData, schema: JsonSchematic): bo
     return false;
 }
 
-export const jsontoobjdata = (data: JsonData): {} => {
-    let obj = {};
-    if(data.property.type === "object") {
-        data.property.name;
-        data.property.value
-        for(const property of data.property.value) {
-            if(property.property.type === "object") {
-                // obj[property.name] = jsontoobjdata(property.property.value);
-            } else {
-                obj[property.name] = property;
-            }
-        }
-    }
-    return {};
-    // else, we need to handle it differently
-}
-
 export const objtojsondataarr = (obj: {}[], title: string): JsonData[] => {
     return obj.map(d => objtojsondata(d, title)); // pseudo wrapper, not perfect.
 }
@@ -222,4 +205,38 @@ export const inferSchema = (data: JsonData[]): JsonSchematic|void => {
             // maybe throw error, we don't need non objects really
         }
     }
+}
+
+type Key = string;
+type Val = string;
+export const transformValueToNativeJson = (v: JsonValue): [Key, Val] => {
+    if(v.type === "object") {
+    }
+    return ["one", "one"];
+}
+
+export const jsondatatoobj = (v: JsonData): {} => {
+    const getKeyValue = (prop: JsonValue, name: string): {} => {
+        if(prop.type === "string") {
+            return {[name]: prop.value};
+        }
+        else if(prop.type === "number") {
+            return {[name]: prop.value};
+        }
+        else if(prop.type === "boolean") {
+            return {[name]: prop.value};
+        }
+        else if(prop.type === "array") {
+            return {[name]: prop.value};
+        }
+        else if(prop.type === "object") {
+            // go one layer deeper
+            return { // not right
+                [prop.name]: prop.value.map(data => jsondatatoobj(data))
+            }
+        }
+        return {};
+    }
+    // you can return either an array or a regular object
+    return {};
 }

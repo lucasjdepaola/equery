@@ -9,8 +9,8 @@ import { parse } from "./parse";
 
 // const data = tweetdata.map(d => objtojsondata(d, "tweet")); // isn't quite correct either, close though
 const data: JsonData = objtojsondata(tweetdata, "tweet");
-console.log("DATA");
-console.log(data);
+// console.log("DATA");
+// console.log(data);
 // clear up ambiguity
 
 const tests = (line: string) => {
@@ -57,6 +57,16 @@ export const query = (statement: string, data: JsonValue[], schema?: JsonSchemat
 // tests('length(.text) > 100') // works
 // tests('.username = lowercase("LUCAS") & .retweets > 9') // works
 // tests('.username: .username = "lucas" ~ orderby(.age) desc')
-tests('.username = "lucas" ~ orderby(.likes) asc')
+// tests('.username = "lucas" ~ orderby(.likes) asc')
+// tests('.username, .likes: .likes < max(.likes)')
+tests('.name, .text: length(.text) > 100 ~ orderby(length(.text)) desc')
+    // id: number;
+    // lang: string;
+    // text: string;
+    // name: string;
+    // source: string;
+    // created_at: string;
+// groupby should come before orderby if anything
+// lets work on aggregates now
 
 // and we can only build functions that conform to our strict function's type

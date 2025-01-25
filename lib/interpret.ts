@@ -9,7 +9,15 @@ import { errors, QueryError } from "./errors";
 import { log, printJson } from "./global/console";
 import { JsonData, JsonObject, JsonValue } from "./jsoncraft";
 import { ExpressionNode, FunctionNode, LiteralNode, LiteralType, Operator, PropertyNode, QueryNode } from "./parse";
-import { functions, FunctionWrapper, QueryFunction } from "./queryfunctions";
+import { AggregateFunction, functions, FunctionWrapper, QueryFunction } from "./queryfunctions";
+
+// fn.name, property.name
+type FunctionName = string;
+type PropertyName = string;
+const aggregateKey = (k: [FunctionName, PropertyName]): string => `${k[0]}_${k[1]}`;
+const aggregateCache = {
+
+} satisfies {[key: string]: LiteralNode};
 
 export const literal = (value: LiteralType): LiteralNode => {
     return {
@@ -19,16 +27,16 @@ export const literal = (value: LiteralType): LiteralNode => {
 }
 
 // we can change it to another type of node that would account for some other values
-export const interpretFunction = (fn: FunctionNode, data: JsonValue): LiteralNode | QueryError => {
+export const interpretFunction = (fn: FunctionNode, data: JsonValue, fullData: JsonValue[]): LiteralNode | QueryError => {
     const args: (LiteralNode | QueryError)[] = fn.arguments.map((expression: ExpressionNode) => {
         // we need interpretExpression as well
         /// we should handle the expression with interpretexpression()
         if(expression.type === "Function") {
-            const subfn = interpretFunction(expression, data);
+            const subfn = interpretFunction(expression, data, fullData);
             return subfn;
         }
         else if(expression.type == "BinaryOp") {
-            return interpretExpression(expression, data);
+            return interpretExpression(expression, data, fullData);
         }
         else if(expression.type === "Literal") {
             return expression;
@@ -65,17 +73,33 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue): LiteralNod
     }
     if(fn.name in functions) { // these are the lists of functions
         // perhaps precalculate all aggregates that are used before performing loop
-        // would be a cache optimization
+        // even with this premise, it's still incredibly inefficient.
         try {
             const [func, type] = functions[fn.name] as FunctionWrapper;
             if(type === "query") {
                 if(args.some(a => "error" in a)) throw new Error("err");
                 const value = (func as QueryFunction)(data, args as LiteralNode[]); // perform the function
-                console.log("we called function: " + fn.name + " and got a valid result");
-                printJson(value);
+                // console.log("we called function: " + fn.name + " and got a valid result");
+                // printJson(value);
                 return value;
             } else {
+                const aggregateArg = fn.arguments[0] as PropertyNode
+                const key = aggregateKey([fn.name, JSON.stringify(aggregateArg)]);
+                if(key in aggregateCache) {
+                    // we already have the value cached
+                    console.log(`cache hit for ${fn.name}`)
+                    return aggregateCache[key];
+                } else {
+                    // calculate the function
+                    const value = (func as AggregateFunction)(fullData, aggregateArg);
+                    if(!("error" in value)) {
+                        console.log(`aggregate function ${fn.name} return value: ${value.value}`);
+                        aggregateCache[key] = value;
+                        return value;
+                    }
+                }
                 // aggregate, so pick from the already cached list
+                // we need more data in the scope
             }
         } catch(e) {
             // return an error since the function does not exist
@@ -184,12 +208,12 @@ export const groupBy = (arr: any[], key: any) =>{
     ), {});
 }
 
-export const interpretExpression = (expression: ExpressionNode, data: JsonValue):LiteralNode | QueryError => {
+export const interpretExpression = (expression: ExpressionNode, data: JsonValue, fullData: JsonValue[]):LiteralNode | QueryError => {
     // expressions 
     // expressions are a superset to regular function() interpretation, yet, a function() can contain an expression.
     if(expression.type === "BinaryOp") {
-        const left = interpretExpression(expression.left, data); // might be inefficient to ref a lot
-        const right = interpretExpression(expression.right, data);
+        const left = interpretExpression(expression.left, data, fullData); // might be inefficient to ref a lot
+        const right = interpretExpression(expression.right, data, fullData);
         if("error" in left || "error" in right) {
             return errors[3];
         }
@@ -197,7 +221,7 @@ export const interpretExpression = (expression: ExpressionNode, data: JsonValue)
         return shallowExpression(left, operator, right);
     }
     else if(expression.type === "Function") {
-        return interpretFunction(expression, data);
+        return interpretFunction(expression, data, fullData);
     }
     else if(expression.type === "Property") {
         // complicated, because we need to leave it nonaggregated before traversing
@@ -229,7 +253,7 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
     if(ast.conditions) {
         const conditions = ast.conditions;
         data = data.filter((value: JsonValue) => {
-            const answer = interpretExpression(conditions, value);
+            const answer = interpretExpression(conditions, value, data);
             if("error" in answer) {
                 console.log("error");
             }
@@ -244,16 +268,13 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
     if(ast.orderBy) {
         const ordering = ast.orderBy;
         const isAscending: boolean = ordering.direction === "asc";
-        console.log(ordering.direction); // so we know now this is wrong
         const orderby = ordering.function;
         if(orderby) {
             // we can just extract the expressions and see
             // its not a real function
             data = data.sort((a: JsonValue, b: JsonValue) => {
-                const one = interpretExpression(orderby.arguments[0], a);
-                const two = interpretExpression(orderby.arguments[0], b);
-                console.log(one);
-                console.log(two);
+                const one = interpretExpression(orderby.arguments[0], a, data);
+                const two = interpretExpression(orderby.arguments[0], b, data);
 
                 if("error" in one) {
                     throw new Error("cannot do this");
@@ -263,10 +284,8 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
                 }
                 if(typeof one.value === "number" && typeof two.value === "number") {
                     if(isAscending) {
-                        console.log("we're doing ascending");
                         return one.value - two.value;
                     } else {
-                        console.log("we're doing descending");
                         return two.value - one.value;
                     }
                 }
@@ -282,8 +301,9 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
     if(ast.scope) {
         const scope = ast.scope;
         data = data.map((value: JsonValue) => {
-            const values: JsonObject = {
-                name: "",
+            if(value.type !== "object") throw new Error("data should be an array of objects");
+            const values: JsonObject = { // this isn't right
+                name: value.name,
                 value: [],
                 type: "object"
             }
@@ -300,7 +320,7 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
                             });
                         } else {
                             values.value.push({
-                                name: "fdsafsaf",
+                                name: e.path[0], // change to deeper TODO
                                 property: property,
                             });
                         }

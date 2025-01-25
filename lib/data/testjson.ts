@@ -1,4 +1,6 @@
 import { JsonData, JsonSchematic, TypedJson } from "../jsoncraft"
+import data from "../datasets/tidy.json"
+
 
 const tweetschema: JsonSchematic = {
     title: "tweet",
@@ -98,7 +100,7 @@ const examplePerson: Person[] | {}[] = [
 
 // we want some sort of way to auto complete things like this for the user experience
 // just make the value : JSON and type it, we don't have to build a json parser for this
-export const tweetdata: Tweet[] = [
+export const tweetdataf: Tweet[] = [
     { // we'd use the auto generated interface for this
         username: "lucas",
         likes: 10,
@@ -124,6 +126,16 @@ export const tweetdata: Tweet[] = [
         text: "this is a test message",
     },
 ]
+
+interface ScrapedTweet {
+    id: number;
+    lang: string;
+    text: string;
+    name: string;
+    source: string;
+    created_at: string;
+}
+export const tweetdata: ScrapedTweet[] = data;
 
 
 // export const tweetExamples: TypedJson = {
