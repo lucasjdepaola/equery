@@ -32,17 +32,18 @@ const tests = (line: string) => {
     }
 }
 
-export const query = (statement: string, schema: JsonSchematic, data: JsonValue[]): JsonValue[]|void => {
+export const query = (statement: string, data: JsonValue[], schema?: JsonSchematic): JsonValue[] => {
     // move this out of the tests file
     const tokens = lex(statement);
     const query = parse(tokens);
     if(query && data) {
         const dt = interpret(query, data);
         if(dt && !("error" in dt)) {
-            // return the data back
+            printJson(dt);
             return dt;
         }
     }
+    throw new Error("error in the data");
 }
 
 // tests('.username = "lucas"')
@@ -50,9 +51,12 @@ export const query = (statement: string, schema: JsonSchematic, data: JsonValue[
 // tests('.username = "lucas" & .likes > 5 & .retweets > 9')
 // tests('.name: length(.username) > 2 & .likes > 1')
 // tests('.name: .likes < 100 | .likes = 1')
-tests('.likes > 5');
-tests('.username = "lucas"');
-tests('.username: .likes < 100 & "lucas" = .username')
-tests('length(.text) > 100')
+// tests('.likes > 5');
+// tests('.username = "lucas"');
+// tests('.username: .likes < 100 & "lucas" = .username')
+// tests('length(.text) > 100') // works
+// tests('.username = lowercase("LUCAS") & .retweets > 9') // works
+// tests('.username: .username = "lucas" ~ orderby(.age) desc')
+tests('.username = "lucas" ~ orderby(.likes) asc')
 
 // and we can only build functions that conform to our strict function's type

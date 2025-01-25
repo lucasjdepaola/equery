@@ -101,7 +101,13 @@ const findProperty = (path: PropertyNode, data: JsonValue): JsonValue => {
         if(data.type === "object" && data.value !== undefined) {
             if(value !== undefined && value.value !== undefined && value.type === "object") {
                 value = value.value.find(v => v.name === propertyName)?.property;
-                if(value === undefined) throw new Error("no");
+                if(value === undefined) {
+                    // throw new Error("no");
+                    return {
+                        type: "boolean",
+                        value: false
+                    }
+                }
             } else {
                 log("We cannot find the property, defaulting to false");
                 return {
@@ -238,41 +244,35 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
     if(ast.orderBy) {
         const ordering = ast.orderBy;
         const isAscending: boolean = ordering.direction === "asc";
+        console.log(ordering.direction); // so we know now this is wrong
         const orderby = ordering.function;
         if(orderby) {
             // we can just extract the expressions and see
             // its not a real function
             data = data.sort((a: JsonValue, b: JsonValue) => {
-                const one = interpretFunction(orderby, a);
-                // change to a simple getproperty
-                const two = interpretFunction(orderby, b);
+                const one = interpretExpression(orderby.arguments[0], a);
+                const two = interpretExpression(orderby.arguments[0], b);
+                console.log(one);
+                console.log(two);
+
                 if("error" in one) {
-                    log('f');
-                    log(one.code);
-                    log(one.message);
-                    log(one.additional);
                     throw new Error("cannot do this");
                 }
                 if("error" in two) {
-                    log(two.code);
-                    log(two.message);
-                    log(two.additional);
-                    log("F");
                     throw new Error("cannot do this");
                 }
                 if(typeof one.value === "number" && typeof two.value === "number") {
                     if(isAscending) {
+                        console.log("we're doing ascending");
                         return one.value - two.value;
                     } else {
+                        console.log("we're doing descending");
                         return two.value - one.value;
                     }
                 }
                 return 0;
             });
         }
-            // this is the function which should contain the name "orderby", if not, throw err.
-            // functions should consist of some form of property or a functionn operation on a property
-            // valid statements: orderby(.age), orderby(length(.name)), orderby(length(.object.name))
         if(ordering.limit) {
             data = data.slice(0, ordering.limit);
         }
@@ -293,10 +293,17 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
                     properties.push(e);
                     const property = findProperty(e, value);
                     if(!("error" in property)) {
-                        values.value.push({
-                            name: "foo",
-                            property: property,
-                        })
+                        if(property.type === "object") {
+                            values.value.push({
+                                name: property.name,
+                                property: property
+                            });
+                        } else {
+                            values.value.push({
+                                name: "fdsafsaf",
+                                property: property,
+                            });
+                        }
                         // not fully proper scope, only shallow
                     }
                     // find the proper scope

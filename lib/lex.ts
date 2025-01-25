@@ -105,6 +105,12 @@ const wordToToken = (word: string): Token | null => {
             value: word
         }
     }
+    else if(new RegExp(lexicalPatterns.word).test(word)) {
+        return {
+            type: TokenType.word,
+            value: word
+        }
+    }
     return null;
 }
 
@@ -175,6 +181,7 @@ export const lex = (code: string): Token[] => {
             if(word.value.length > 0) { // if we're already parsing a word (indicating function)
                 let index = handleParen(i, word.value);
                 i = index;
+                word.value = "";
             }
             // otherwise, we should push lparen indicating an expression
         }
@@ -182,6 +189,7 @@ export const lex = (code: string): Token[] => {
             word.value += char;
         }
     }
+    console.log(word.value); //desc
     handleWord(); // incase we have any word left
     return tokens;
 }

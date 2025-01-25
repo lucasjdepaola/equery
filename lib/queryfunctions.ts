@@ -92,7 +92,7 @@ const length: QueryFunction = (data: JsonValue, args?: LiteralNode[]): LiteralNo
             }
         }
     }
-    throw new Error("something is wrong here");
+    throw new Error("incompatible types.");
     return errors[6];
 }
 

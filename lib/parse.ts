@@ -250,7 +250,8 @@ export const parse = (tokens: Token[]): QueryNode | void => {
         const order = matchAndRemove(TokenType.function);
         let ascOrDesc = matchAndRemove(TokenType.word);
         let ascendingString: "asc" | "desc" = "asc"
-        if(ascOrDesc) {
+        if(ascOrDesc !== undefined) {
+            console.log("254")
             ascendingString = ascOrDesc.value === "asc"? "asc" : "desc";
         }
         let orderby: OrderByNode = {
