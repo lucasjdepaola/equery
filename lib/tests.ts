@@ -19,6 +19,7 @@ const tests = (line: string) => {
         if(dt && !("error" in dt)) {
             console.log("RESULT -+++++++")
             printJson(jsondatatoobj({name: "title", property: {type: "array", value: dt}}));
+            // printJson(dt);
             console.log("+++++++");
             console.log(`result length: ${dt.length}`);
         }
@@ -42,25 +43,4 @@ export const query = (statement: string, data: JsonValue[], schema?: JsonSchemat
     throw new Error("error in the data");
 }
 
-// tests('.username = "lucas"')
-// tests('.username = "lucas" & .likes > 5')
-// tests('.username = "lucas" & .likes > 5 & .retweets > 9')
-// tests('.name: length(.username) > 2 & .likes > 1')
-// tests('.name: .likes < 100 | .likes = 1')
-// tests('.likes > 5');
-// tests('.username = "lucas"');
-// tests('.username: .likes < 100 & "lucas" = .username')
-// tests('length(.text) > 100') // works
-// tests('.username = lowercase("LUCAS") & .retweets > 9') // works
-// tests('.username: .username = "lucas" ~ orderby(.age) desc')
-// tests('.username = "lucas" ~ orderby(.likes) asc')
-// tests('.username, .likes: .likes < max(.likes)')
-
-// tests('.name, .text: length(.text) > 100 ~ orderby(length(.text)) desc')
-tests('.Username, .Text, .Likes: length(.Username) < 4 ~ orderby(.Likes) desc limit(10)')
-    // Tweet_ID: number;
-    // Username: string;
-    // Text: string;
-    // Retweets: number;
-    // Likes: number;
-    // Timestamp: string;
+tests('.screen_name, .text: length(.text) < 100 & contains(.text, "china") ~ limit(10)')

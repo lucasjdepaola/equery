@@ -1,6 +1,6 @@
 import { JsonData, JsonSchematic, TypedJson } from "../jsoncraft"
 import data from "../datasets/tidy.json"
-import tweets from "../datasets/tweet2.json"
+import tweets from "../datasets/congress.json"
 
 const tweetschema: JsonSchematic = {
     title: "tweet",
@@ -83,12 +83,13 @@ interface ScrapedTweet {
 }
 
 interface TweetDataset {
-    Tweet_ID: number;
-    Username: string;
-    Text: string;
-    Retweets: number;
-    Likes: number;
-    Timestamp: string;
+    id: string;
+    screen_name: string;
+    time: string;
+    link: string;
+    text: string;
+    source: string;
+    user_id: string;
 }
 
 // export const tweetdata: ScrapedTweet[] = data;

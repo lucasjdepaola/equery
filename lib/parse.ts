@@ -1,4 +1,4 @@
-import { log } from "./global/console";
+import { log, printJson } from "./global/console";
 import { lex, operators, Token, TokenType } from "./lex";
 
 type NodeType = "Query" | "Property" | "Function" | "BinaryOp" | "Literal" | "OrderBy" | "Program"
@@ -60,10 +60,11 @@ const parseFunction = (token: Token): FunctionNode => {
     if(contents.length > 0 && !contents.includes(",")) {
         args = [contents];
     }
+    const finalArgs = args.map((arg) => parseExpression(lex(arg))[0]!) // 0?
     return {
         type: "Function",
-        name: name, // fix below
-        arguments: args.map((arg) => parseExpression(lex(arg))[0]!)
+        name: name,
+        arguments: finalArgs
     }
 }
 const parseProperty = (token: Token): PropertyNode => {

@@ -79,8 +79,6 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue, fullData: J
             if(type === "query") {
                 if(args.some(a => "error" in a)) throw new Error("err");
                 const value = (func as QueryFunction)(data, args as LiteralNode[]); // perform the function
-                // console.log("we called function: " + fn.name + " and got a valid result");
-                // printJson(value);
                 return value;
             } else {
                 const aggregateArg = fn.arguments[0] as PropertyNode
@@ -105,6 +103,7 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue, fullData: J
             // return an error since the function does not exist
             console.log("An error has occured calling the function");
             console.log(e);
+            throw new Error("stop");
         }
     }
     return {

@@ -3,6 +3,7 @@
 // count(.any) orderby(.any, desc|asc)
 
 import { errors, QueryError } from "./errors";
+import { printJson } from "./global/console";
 import { interpretExpression, literal } from "./interpret";
 import { JsonData, JsonValue } from "./jsoncraft";
 import { ExpressionNode, FunctionNode, LiteralNode } from "./parse";
@@ -130,13 +131,13 @@ const toUTC = (date: string): number => {
 export const contains = (data: JsonValue, args?: LiteralNode[]): LiteralNode => {
     if(!args) throw new Error("contains needs arguments");
     // value, contains contains(.property, "string")
-    const [property, str] = args;
+    const [property, str] = [args[0], args[1]];
     if(typeof property.value !== "string" && typeof str.value !== "string") {
         throw new Error("wrong arguments in contains");
     }
-    const regex: RegExp = new RegExp(str.value as string);
+    const regex: RegExp = new RegExp((str.value as string).toLowerCase());
     // or could do string.includes(), etc
-    return literal(regex.test(property.value as string));
+    return literal(regex.test((property.value as string).toLowerCase()));
 }
 // we could find a way to leverage the functions native to javascript
 // yearsfromdate(.number), senator is yearsfromdate(.birthdate) years old
@@ -183,9 +184,9 @@ export const functions = {
     max: [max, "aggregate"],
     sum: [sum, "aggregate"],
     average: [average, "aggregate"],
-    count: [count, "aggregate"],
-    contains: [contains, "aggregate"], // aggregates
+    count: [count, "aggregate"], // aggregates
 
+    contains: [contains, "query"],
     uppercase: [uppercase, "query"],
     lowercase: [lowercase, "query"], // string functions
     // number functions
