@@ -1,11 +1,12 @@
 // testing the lexer
 
-import { tweetdata } from "./data/testjson";
+import { nfldata, tweetdata } from "./data/testjson";
 import { log, printJson } from "./global/console";
 import { interpret } from "./interpret";
 import { JsonData, jsondatatoobj, JsonSchematic, JsonValue, objtojsondata, objtojsondataarr } from "./jsoncraft";
 import { lex, Token } from "./lex";
 import { parse } from "./parse";
+import "./global/prototype"
 
 const data: JsonData = objtojsondata(tweetdata, "tweet");
 
@@ -36,11 +37,44 @@ export const query = (statement: string, data: JsonValue[], schema?: JsonSchemat
     if(query && data) {
         const dt = interpret(query, data);
         if(dt && !("error" in dt)) {
-            printJson(dt);
             return dt;
         }
     }
     throw new Error("error in the data");
 }
 
-tests('.screen_name, .text: length(.text) < 100 & contains(.text, "china") ~ limit(10)')
+// tests('.screen_name, .text: contains(.text, "warren") ~ limit(10)')
+// tests('.screen_name: length(.screen_name) < 5')
+const d = tweetdata.equery('.screen_name: length(.screen_name) < 5 ~ orderby(length(.screen_name)) limit(10)');
+// works
+// printJson(d);
+// printJson(d);
+
+let q = '.name_first, .name_last, .rank, .penalty: ~ orderby(.penalty) asc limit(10)'
+const nf = nfldata.equery(q);
+console.log(`query: ${q}`)
+printJson(nf);
+
+    // season: number;
+    // season_type: string;
+    // game_week: string;
+    // team_abb: string;
+    // player_id: number;
+    // name_short: string;
+    // rank: number;
+    // qbr_total: number;
+    // pts_added: number;
+    // qb_plays: number;
+    // epa_total: number;
+    // pass: number;
+    // run: number;
+    // exp_sack: number;
+    // penalty: number;
+    // qbr_raw: number;
+    // sack: number
+    // name_first: string;
+    // name_last: string;
+    // name_display: string;
+    // headshot_href: string;
+    // team: string;
+    // qualified: string;

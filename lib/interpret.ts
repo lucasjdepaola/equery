@@ -26,11 +26,8 @@ export const literal = (value: LiteralType): LiteralNode => {
     }
 }
 
-// we can change it to another type of node that would account for some other values
 export const interpretFunction = (fn: FunctionNode, data: JsonValue, fullData: JsonValue[]): LiteralNode | QueryError => {
     const args: (LiteralNode | QueryError)[] = fn.arguments.map((expression: ExpressionNode) => {
-        // we need interpretExpression as well
-        /// we should handle the expression with interpretexpression()
         if(expression.type === "Function") {
             const subfn = interpretFunction(expression, data, fullData);
             return subfn;
@@ -42,13 +39,10 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue, fullData: J
             return expression;
         }
         else if(expression.type === "Property") {
-            // handle property
             const value = findPropertyValue(expression, data);
             if(value.type === "array" || value.type === "object") {
-                // we cannot do this
                 throw new Error("cannot perform expressions on arrays or objects");
             }
-            // we need to know that we can't do expressions on certain types
             // so we need to confine it down to singular values, not arrays
             const literalNode: LiteralNode = {
                 type: "Literal",
@@ -71,9 +65,7 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue, fullData: J
         }, "");
         return error;
     }
-    if(fn.name in functions) { // these are the lists of functions
-        // perhaps precalculate all aggregates that are used before performing loop
-        // even with this premise, it's still incredibly inefficient.
+    if(fn.name in functions) {
         try {
             const [func, type] = functions[fn.name] as FunctionWrapper;
             if(type === "query") {
@@ -85,7 +77,6 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue, fullData: J
                 const key = aggregateKey([fn.name, JSON.stringify(aggregateArg)]);
                 if(key in aggregateCache) {
                     // we already have the value cached
-                    console.log(`cache hit for ${fn.name}`)
                     return aggregateCache[key];
                 } else {
                     // calculate the function
@@ -96,11 +87,8 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue, fullData: J
                         return value;
                     }
                 }
-                // aggregate, so pick from the already cached list
-                // we need more data in the scope
             }
         } catch(e) {
-            // return an error since the function does not exist
             console.log("An error has occured calling the function");
             console.log(e);
             throw new Error("stop");
@@ -113,7 +101,6 @@ export const interpretFunction = (fn: FunctionNode, data: JsonValue, fullData: J
 }
 
 const findPropertyValue = (propertyPath: PropertyNode, data: JsonValue): JsonValue => {
-    // change to findproperty().value below
     const property = findProperty(propertyPath, data);
     return property;
 }
@@ -143,8 +130,10 @@ const findProperty = (path: PropertyNode, data: JsonValue): JsonValue => {
     if(value && value.value !== undefined) {
         return value;
     }
-    // return false when we know this function is correct.
-    throw new Error(errors[1].message);
+    return {
+        type: "boolean",
+        value: false
+    }
 }
 
 export type NativeType = "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function";
@@ -188,16 +177,12 @@ const shallowExpression = (left: LiteralNode, operator: Operator, right: Literal
 }
 
 const groupby = (expression: ExpressionNode, data: JsonData[]) => { // not a trivial problem, but can be done
-    // we need this to have one property involved.
-    // so if it's length(.property) then you'd base it on a property
-    // i guess it doesn't really need to be property based, but yeah.
 }
 export const groupBy = (arr: any[], key: any) =>{
     // now let's change it to property based
     // we calulate the property or expression, and get the answer
     // we should go from jsondata[] and return jsondata[] except it's keys
     // of the trait we want (i.e): 1: {} // objects
-    // going to be very challenging, likely a day problem
     return arr.reduce((pv, cv) => (
         {
             ...pv,
@@ -208,7 +193,6 @@ export const groupBy = (arr: any[], key: any) =>{
 }
 
 export const interpretExpression = (expression: ExpressionNode, data: JsonValue, fullData: JsonValue[]):LiteralNode | QueryError => {
-    // expressions 
     // expressions are a superset to regular function() interpretation, yet, a function() can contain an expression.
     if(expression.type === "BinaryOp") {
         const left = interpretExpression(expression.left, data, fullData); // might be inefficient to ref a lot
@@ -236,19 +220,12 @@ export const interpretExpression = (expression: ExpressionNode, data: JsonValue,
     else if(expression.type === "Literal") {
         return expression;
     }
-
-    // throw error here
     throw new Error("this should not happen." + JSON.stringify(expression));
-    return {
-        type: "Literal",
-        value: -1
-    }
 }
 
 export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | QueryError | void => {
     console.log("STARTING THE INTERPRETER --------");
-    // condition -> order/sort -> scope
-    // so basically, map() -> filter() -> sort(), but we do it in lossless order
+    // condition -> order/sort -> scope to remain lossless
     if(ast.conditions) {
         const conditions = ast.conditions;
         data = data.filter((value: JsonValue) => {
@@ -263,14 +240,11 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
         })
     }
 
-    // now that we have a filtered down list, we can order the function
-    if(ast.orderBy) {
+    if(ast.orderBy) { // ordering
         const ordering = ast.orderBy;
         const isAscending: boolean = ordering.direction === "asc";
         const orderby = ordering.function;
         if(orderby) {
-            // we can just extract the expressions and see
-            // its not a real function
             data = data.sort((a: JsonValue, b: JsonValue) => {
                 const one = interpretExpression(orderby.arguments[0], a, data);
                 const two = interpretExpression(orderby.arguments[0], b, data);
@@ -288,12 +262,13 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
                         return two.value - one.value;
                     }
                 }
-                return 0;
+                return 0; // don't modify the ordering
             });
         }
-        if(ordering.limit !== undefined) {
+        if(ordering.limit !== undefined && ordering.limit < data.length) {
             // this might not be trimmed right
             data = data.slice(0, ordering.limit);
+            console.log(`limit: ${ordering.limit}, trimmed length: ${data.length}`)
         }
     }
 
@@ -302,14 +277,13 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
         const scope = ast.scope;
         data = data.map((value: JsonValue) => {
             if(value.type !== "object") throw new Error("data should be an array of objects");
-            const values: JsonObject = { // this isn't right
+            const values: JsonObject = {
                 name: value.name,
                 value: [],
                 type: "object"
             }
             scope.map((e: ExpressionNode) => {
                 if(e.type === "Property") {
-                    // this is the most common case. a reference such as .age, .name
                     properties.push(e);
                     const property = findProperty(e, value);
                     if(!("error" in property)) {
@@ -324,9 +298,7 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
                                 property: property,
                             });
                         }
-                        // not fully proper scope, only shallow
                     }
-                    // find the proper scope
                 }
                 else if(e.type === "Literal") {
                     throw new Error("Cannot use literal values in scope phase");
@@ -338,7 +310,6 @@ export const interpret = (ast: QueryNode, data: JsonValue[]): JsonValue[] | Quer
             });
             return values;
         })
-        // recursive filter properties that only include certain names involved in the scope relative to their level
     }
-    return data; // return the data
+    return data;
 }

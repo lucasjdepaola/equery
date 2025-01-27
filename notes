@@ -16,3 +16,7 @@ not the main purpose, but would still be a great tool to have
 
 join -> variadic object joining if types are similar
 join(@Corvids, @Raptors) as @Birds // something like this, though not needed
+
+
+we should implement set theory and call it say union, instead of join()
+for example: union(@corvid, @raptors), or we could assume we implement the parent first, and we do @Corvids = .type = "corvid" as a more abstract way to create these schemas

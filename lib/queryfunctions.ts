@@ -74,6 +74,17 @@ export const aggregateFunctions = {
     max, min, average, sum, count // aggregate functions are tidy now
 } as const satisfies {[key: string]: AggregateFunction};
 
+const not = (data: JsonValue, args?: LiteralNode[]): LiteralNode => {
+    // we really want one expression, then we turn it into it's negation
+    if(args) {
+        const [expression] = args;
+        if(expression && typeof expression.value === "boolean") {
+            return literal(!expression.value);
+        }
+    }
+    throw new Error("error interpreting not(), ensure the argument is an expression which results in true or false");
+}
+
 
 const length: QueryFunction = (data: JsonValue, args?: LiteralNode[]): LiteralNode | QueryError => {
     // length(.name) for strings, numbers, or whatever really
@@ -186,6 +197,7 @@ export const functions = {
     average: [average, "aggregate"],
     count: [count, "aggregate"], // aggregates
 
+    not: [not, "query"],
     contains: [contains, "query"],
     uppercase: [uppercase, "query"],
     lowercase: [lowercase, "query"], // string functions

@@ -1,86 +1,10 @@
 import { JsonData, JsonSchematic, TypedJson } from "../jsoncraft"
 import data from "../datasets/tidy.json"
 import tweets from "../datasets/congress.json"
-
-const tweetschema: JsonSchematic = {
-    title: "tweet",
-    properties: [
-        {
-            name: "username",
-            abstract: {type: "string"},
-            required: true
-        },
-        {
-            name: "likes",
-            abstract: {type: "number"},
-            required: true
-        },
-        {
-            name: "retweets",
-            abstract: {type: "number"},
-            required: true
-        },
-        {
-            name: "replies",
-            abstract: {type: "object", of: []},
-            required: true
-        },
-        {
-            name: "date",
-            abstract: {type: "number"},
-            required: true
-        },
-        {
-            name: "text",
-            abstract: {type: "string"},
-            required: true
-        },
-        {
-            name: "image",
-            abstract: {type: "string"},
-            required: false
-        },
-        {
-            name: "video",
-            abstract: {type: "string"}, // link
-            required: false
-        },
-    ]
-}
-
-const userschema: JsonSchematic = {
-    title: "user",
-    properties: [
-        {
-            name: "username",
-            abstract: {type: "string"},
-            required: true
-        },
-    ]
-}
-
-interface Tweet {
-    username: string;
-    likes: number;
-    retweets: number;
-    date: number;
-    replies: Tweet[];
-    text: string;
-    image?: string;
-    video?: string;
-}
+import nfl from "../datasets/nfl.json"
 
 // we want some sort of way to auto complete things like this for the user experience
 // just make the value : JSON and type it, we don't have to build a json parser for this
-
-interface ScrapedTweet {
-    id: number;
-    lang: string;
-    text: string;
-    name: string;
-    source: string;
-    created_at: string;
-}
 
 interface TweetDataset {
     id: string;
@@ -92,5 +16,32 @@ interface TweetDataset {
     user_id: string;
 }
 
+interface NflDataset {
+    season: number;
+    season_type: string;
+    game_week: string;
+    team_abb: string;
+    player_id: number;
+    name_short: string;
+    rank: number;
+    qbr_total: number;
+    pts_added: number;
+    qb_plays: number;
+    epa_total: number;
+    pass: number;
+    run: number;
+    exp_sack: number;
+    penalty: number;
+    qbr_raw: number;
+    sack: number
+    name_first: string;
+    name_last: string;
+    name_display: string;
+    headshot_href: string;
+    team: string;
+    qualified: string;
+}
+
 // export const tweetdata: ScrapedTweet[] = data;
 export const tweetdata: TweetDataset[] = tweets;
+export const nfldata: NflDataset[] | {}[] = nfl;
