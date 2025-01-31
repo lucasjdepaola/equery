@@ -9,3 +9,4 @@ for building relatively opinionated libraries (such as the pseudo xml parser), w
 https://expo.dev
 
 bluesky uses expo which is interesting, seems like a good platform for small teams to iterate quickly
+https://docs.expo.dev/tutorial/create-your-first-app/

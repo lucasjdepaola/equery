@@ -1,5 +1,5 @@
 import { jsondatatoobj, objtojsondata } from "../jsoncraft";
-import { query } from "../tests";
+import { query } from "../query";
 
 export {}
 declare global {

@@ -20,7 +20,6 @@ const tests = (line: string) => {
         if(dt && !("error" in dt)) {
             console.log("RESULT -+++++++")
             printJson(jsondatatoobj({name: "title", property: {type: "array", value: dt}}));
-            // printJson(dt);
             console.log("+++++++");
             console.log(`result length: ${dt.length}`);
         }
@@ -28,19 +27,6 @@ const tests = (line: string) => {
         console.log("interpreting failed, ");
         console.log(data.property.value);
     }
-}
-
-export const query = (statement: string, data: JsonValue[], schema?: JsonSchematic): JsonValue[] => {
-    // move this out of the tests file
-    const tokens = lex(statement);
-    const query = parse(tokens);
-    if(query && data) {
-        const dt = interpret(query, data);
-        if(dt && !("error" in dt)) {
-            return dt;
-        }
-    }
-    throw new Error("error in the data");
 }
 
 // tests('.screen_name, .text: contains(.text, "warren") ~ limit(10)')
