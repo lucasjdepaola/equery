@@ -45,36 +45,10 @@ export const query = (statement: string, data: JsonValue[], schema?: JsonSchemat
 
 // tests('.screen_name, .text: contains(.text, "warren") ~ limit(10)')
 // tests('.screen_name: length(.screen_name) < 5')
-const d = tweetdata.equery('.screen_name: length(.screen_name) < 5 ~ orderby(length(.screen_name)) limit(10)');
-// works
-// printJson(d);
-// printJson(d);
+const d = tweetdata.equery('.screen_name, .text: contains(.text, "china") ~ limit(10)');
+printJson(d);
 
-let q = '.name_first, .name_last, .rank, .penalty: ~ orderby(.penalty) asc limit(10)'
-const nf = nfldata.equery(q);
-console.log(`query: ${q}`)
-printJson(nf);
-
-    // season: number;
-    // season_type: string;
-    // game_week: string;
-    // team_abb: string;
-    // player_id: number;
-    // name_short: string;
-    // rank: number;
-    // qbr_total: number;
-    // pts_added: number;
-    // qb_plays: number;
-    // epa_total: number;
-    // pass: number;
-    // run: number;
-    // exp_sack: number;
-    // penalty: number;
-    // qbr_raw: number;
-    // sack: number
-    // name_first: string;
-    // name_last: string;
-    // name_display: string;
-    // headshot_href: string;
-    // team: string;
-    // qualified: string;
+// let q = '.name_first, .name_last, .rank: length(.name_first) > 5 ~ orderby(.rank) asc'
+// const nf = nfldata.equery(q).equery(".rank = 2");
+// console.log(`query: ${q}`)
+// printJson(nf);

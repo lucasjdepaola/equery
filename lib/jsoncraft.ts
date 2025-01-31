@@ -238,3 +238,6 @@ export const jsondatatoobj = (v: JsonData): any => {
 
     return getValue(v.property);
 };
+
+
+// we might want to do this in a separate folder rather than putting all standard functions inside of jsoncraft. schema validation, creation, etc, would be cleaner in a separate file
