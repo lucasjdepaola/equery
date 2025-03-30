@@ -5,7 +5,7 @@
 import { errors, QueryError } from "./errors";
 import { printJson } from "./global/console";
 import { interpretExpression, literal } from "./interpret";
-import { JsonData, JsonValue } from "./jsoncraft";
+import { JsonData, JsonValue, TypeAbstract } from "./jsoncraft";
 import { ExpressionNode, FunctionNode, LiteralNode } from "./parse";
 
 export type QueryFunction = (data: JsonValue, args?: LiteralNode[]) => LiteralNode | QueryError;
@@ -16,7 +16,30 @@ export type AggregateFunction = (data: JsonValue[], arg: ExpressionNode) => Lite
 
 export type FunctionWrapper = [QueryFunction | AggregateFunction, "aggregate" | "query"];
 // for aggregates, we need the data array to determine it
-const isAggregate = (fn: QueryFunction | AggregateFunction) => "length" in fn.arguments[0];
+
+type FunctionParameters = TypeAbstract["type"] | "any" | "optional";
+const enforce = (params: FunctionParameters[], args?: LiteralNode[]) => {
+    if(!args) throw new Error("Arguments are required in function call.");
+    let failed = false;
+    for(let i = 0; i < params.length; i++) {
+        const param = params[i];
+        const arg = args[i];
+        if(param === "optional") {
+            break; // meaning we no longer need to enforce
+        }
+        if(param === "any") continue;
+        const value = arg.value;
+        if(Array.isArray(value) && param !== "array") {
+            failed = true;
+        }
+        if(typeof value !== param) {
+            failed = true;
+        }
+    }
+    if(failed) {
+        throw new Error(`incorrect arguments, expected: ${JSON.stringify(params)}`)
+    }
+}
 
 const dataToNumber = (data: JsonValue[], arg: ExpressionNode): number[] => {
     const values: LiteralNode[] = data.map((d) => interpretExpression(arg, d, data)).filter(d => !("error" in d)) as LiteralNode[];
@@ -28,6 +51,7 @@ const dataToNumber = (data: JsonValue[], arg: ExpressionNode): number[] => {
     return strictValues;
 }
 
+// TODO: allow for aggregates to be enforceable
 const max = (data: JsonValue[], arg: ExpressionNode): LiteralNode | QueryError => {
     const values = dataToNumber(data, arg);
     return literal(Math.max(...values));
@@ -75,6 +99,7 @@ export const aggregateFunctions = {
 } as const satisfies {[key: string]: AggregateFunction};
 
 const not = (data: JsonValue, args?: LiteralNode[]): LiteralNode => {
+    enforce(["boolean"], args);
     // we really want one expression, then we turn it into it's negation
     if(args) {
         const [expression] = args;
@@ -89,6 +114,7 @@ const not = (data: JsonValue, args?: LiteralNode[]): LiteralNode => {
 const length: QueryFunction = (data: JsonValue, args?: LiteralNode[]): LiteralNode | QueryError => {
     // length(.name) for strings, numbers, or whatever really
     // we shouldn't do it like this
+    enforce(["any"], args);
     if(args) {
         let value = args[0]; // we want the first argument
         if(typeof value.value === "string") {

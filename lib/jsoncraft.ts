@@ -25,7 +25,7 @@ const getJsonType = (data: any): JsonTypeNames => {
 // for type checking
 export type TypePrimitive = {type: "string"} | {type: "number"} | {type: "boolean"};
 export type TypeArray = {type: "array", of: TypeAbstract};
-export type TypeObject = {type: "object", of: TypeData[]};
+export type TypeObject = {type: "object", of: TypeData[]}; // do we want to change this so we don't have objects manually enumerated?
 export type TypeAbstract = TypePrimitive | TypeArray | TypeObject;
 export interface TypeData {
     name: string;
@@ -111,37 +111,6 @@ export const compareSchemas = (prev: TypeData[], current: TypeData[]): TypeData[
 
 }
 
-export const inferSchema = (data: JsonData[]): JsonSchematic|void => {
-    // the schema though, is title: string, properties: properties
-    // so we're one layer above what it should be.
-    // this assumes we're already in the array, it's hard because of how recursive it is
-    const schema: JsonSchematic = {
-        "title": "title",
-        "properties": []
-    }
-    for(let i = 0; i < data.length; i++) {
-        const insertion = data[i];
-        if((insertion.property.type === "object")) {
-            const properties = getProperties(insertion);
-            if(!("error" in properties)) {
-                const data: TypeObject = {
-                    type: "object",
-                    of: properties
-                }
-                // compare again
-                let obj: TypeData = {
-                    name: insertion.name,
-                    abstract: data,
-                    required: false
-                }
-                // schema.properties = compareSchemas(schema.properties, data.of);
-                schema.properties.push();
-            }
-        } else {
-            // maybe throw error, we don't need non objects really
-        }
-    }
-}
 
 type Key = string;
 type Val = string;
@@ -239,5 +208,60 @@ export const jsondatatoobj = (v: JsonData): any => {
     return getValue(v.property);
 };
 
+
+/* schema the program uses -> tyepscript compatible interface */
+export const schemaToInterfaceString = (schema: JsonSchematic, spaceLength?: number): string => {
+    let schemaInterface = "interface {\n";
+    for(const property of schema.properties) {
+        schemaInterface += " ".repeat(spaceLength || 4); // spaces not tabs
+        schemaInterface += `${property.name}${property.required && "?"}: `;
+        // here is where it gets slightly more complex
+        if(property.abstract.type === "string" || property.abstract.type === "number" || property.abstract.type === "boolean") {
+            schemaInterface += `${property.abstract.type};\n`;
+        }
+        else if(property.abstract.type === "array") {
+            schemaInterface += `${property.abstract.of}[];\n`
+        } else { // object case assuming we use object references rather than real {}
+            schemaInterface += `${property.name}` // assuming that we have this info already.
+            // wait, we can just tie it to another schema, in means of delegation
+        }
+        // only right for primitives
+    }
+    schemaInterface += "\n}";
+    return "";
+}
+
+/* TODO change this */
+export const inferSchema = (data: JsonData[]): JsonSchematic|void => {
+    // the schema though, is title: string, properties: properties
+    // so we're one layer above what it should be.
+    // this assumes we're already in the array, it's hard because of how recursive it is
+    const schema: JsonSchematic = {
+        "title": "title",
+        "properties": []
+    }
+    for(let i = 0; i < data.length; i++) {
+        const insertion = data[i];
+        if((insertion.property.type === "object")) {
+            const properties = getProperties(insertion);
+            if(!("error" in properties)) {
+                const data: TypeObject = {
+                    type: "object",
+                    of: properties
+                }
+                // compare again
+                let obj: TypeData = {
+                    name: insertion.name,
+                    abstract: data,
+                    required: false
+                }
+                // schema.properties = compareSchemas(schema.properties, data.of);
+                schema.properties.push();
+            }
+        } else {
+            // maybe throw error, we don't need non objects really
+        }
+    }
+}
 
 // we might want to do this in a separate folder rather than putting all standard functions inside of jsoncraft. schema validation, creation, etc, would be cleaner in a separate file
